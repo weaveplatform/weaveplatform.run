@@ -51,10 +51,11 @@ weaveplatform-manifest
 └── keys/                   # signing chain, rotation policy
 
 ## Product tier
-sightweave
-├── cmd/sightweave/         # the service
+<product_name>weave
+├── cmd/<product_name>weave/# the service
+├── internal/               # the internal components of the product
 ├── agent/                  # module binary — ships and versions with the product
-│   └── cmd/sightweave-agent/
+│   └── cmd/<product_name>weave-agent/
 ├── sdk/                    # client library for this service
 └── api/                    # surfaces used by nobody else (shared ones → weaveplatform-api)
 
@@ -70,13 +71,26 @@ guestweave-linux                    # libvirt
 
 ## guestweave
 ### product description: 
-a cli tool guest vm management. can create, start, stop, restart, migrate, snapshot and delete guest vms.
-3 seperate vm mangers for linux, windows and macos hosts. linux can run linux on linux and windows on linux. 
-macos can run mac on mac, linux on mac and windows on mac. windows can run windows on windows and linux on windows.
-Not bare metal, but a vm manager for guest vm management. Windows engine is built upon hcs. macos engine is built
-on framework.virtualization for macos and linux and framework.hypervisor for windows. linux engine is built upon libvirt.
-can run headless and headed for all guest/vm combinations. exposes all services via a restful api.
+a cli tool for guest vm management. Not bare metal, but a vm manager for guest vm management.
+3 seperate vm mangers exist covering linux, windows and macos hosts. 
+linux can run linux on linux and windows on linux. 
+macos can run mac on mac, linux on mac and windows on mac. 
+windows can run windows on windows and linux on windows.
+
+Windows engine is built upon hcs. macos engine is built on virtualization.framework for macos and linux 
+and Hypervisor.framework for windows. linux engine is built upon libvirt.
+vm's can run headless and headed for all guest/vm combinations. All cli operations are exposed via a restful api.
+
+supports commands like create, start, stop, restart, migrate, clone, snapshot, suspend, migrate, prune and delete 
+guest vms. Additionally it supports the ability to run multiple guest vms on the same host.
+macOS images are provisioned from a apple CDW supplied IPSW. Windows images are provisioned from a microsoft CDN. 
+Linux images are provisioned from a linux distribution CDN. Remote commands are supported for all guest vms, such 
+as resolve ip, ssh, login, logout and restart. All OS install options can be driven either as attended (via the ui) 
+or unattended using OS specific kickstart tools or keypress scripts.
+
+A basic ui is provided to allow for the management of guest vms as well. But tool is primarily expected to be used via the cli.
 
 ## hostweave
 ### product description:
-a host orchestrator for host management. can leverage guestweave to call on the features of the guest vm manager
+a host orchestrator for host management. can leverage guestweave to call on the features of the guest vm manager orchestrator
+deploys into cloud. 
