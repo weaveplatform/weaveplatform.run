@@ -94,5 +94,39 @@ A basic ui is provided to allow for the management of guest vms as well. But too
 
 ## hostweave
 ### product description:
-a host orchestrator for host management. can leverage guestweave to call on the features of the guest vm manager orchestrator
-deploys into cloud. 
+a fleet scheduler for guest vms. not a hypervisor and not a vm manager, but the layer above 
+guestweave that decides where work runs. hosts run a guestweave agent module and poll for work, so 
+outbound connections only and cloud hosts behind nat, racked machines and roaming laptops all 
+participate the same way. all operations are exposed via a restful api and a cli.
+
+work is submitted declaratively as a spec and reconciled, not driven as imperative commands. 
+three workload kinds exist. jobs run to completion and return an exit code and artefacts. sessions 
+are held by a person, a cua or a service until released or expired. services stay up and are 
+restarted on failure. a spec declares image, resources, lifetime, disposal, network isolation and 
+what to expose. disposal defaults to destroy and cannot be set to reuse after agentic execution.
+
+placement is a constraint solver rather than bin packing because the guest matrix is asymmetric. 
+macos guests run only on apple hardware, apple silicon runs arm64 windows only, and no more than 
+two macos guests may run on one host. hosts advertise what they can run rather than being configured 
+for it. affinity, anti-affinity, spread and pack, reservations, priority classes and preemption are 
+all supported. a queue with per-tenant fairness, ageing and visible position handles contention.
+
+images are content addressed and built once centrally using the unattended install paths guestweave 
+already supports, then cached per host and fast cloned on instantiation using apfs clonefile, 
+differencing disks or qcow2 backing files. warm pools are kept per image spec and autoscaled on 
+queue depth. time to ready is the metric the product is designed around, measured in seconds rather 
+than the tens of minutes a cdn provisioned install costs.
+
+guardrails are enforced outside the guest where the workload cannot reach them. network allowlists 
+are applied at the virtual switch, the kill switch is vm destruction, session recording is captured 
+host side, the audit stream leaves over the hypervisor channel before the guest sees it, and 
+snapshot rollback is the final containment rung. run context is attested by the host and delivered 
+inward rather than read locally.
+
+leases, quotas and rbac scope everything to teams and projects, with macos slots counted separately 
+because they are the scarcest resource. cloud burst extends local capacity when it is exhausted, 
+with per archetype cost attribution. reconciliation is continuous, so draining a host evacuates it, 
+a failed host reschedules its work and migration uses the verb guestweave already has.
+
+hostweave knows nothing about hcs, virtualization.framework or libvirt. it speaks specs and leases, 
+and translating those into guestweave calls is the host agent's job.
