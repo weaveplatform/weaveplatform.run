@@ -1,75 +1,82 @@
-# Template
+## Platform tier
+weaveplatform-api
+├── proto/                  # gRPC IDL
+│   ├── agent/v1/           #   core ↔ module: handshake, host services, lifecycle
+│   ├── guestweave/v1/      #   per-service RPC surfaces
+│   ├── hostweave/v1/
+│   └── gateweave/v1/
+├── openapi/                # REST surfaces (generated from proto where they overlap)
+│   ├── guestweave.yaml
+│   └── hostweave.yaml
+├── events/                 # event envelopes, topic definitions
+├── schemas/                # shared domain types: Device, Session, Identity, Error, AuthClaims
+├── gen/go/                 # generated Go — the only thing consumers import
+└── buf.yaml                # breaking-change detection in CI
 
-This repository serves as a **Default Template Repository** according official [GitHub Contributing Guidelines][ProjectSetup] for healthy contributions. It brings you clean default Templates for several areas:
+weaveplatform-sdk
+├── errors/                 # structured error taxonomy
+├── log/                    # slog conventions, redaction
+├── config/                 # schema, precedence, validation
+├── retry/                  # backoff, circuit breaker
+├── platform/               # seam over go-bindings-*: capability-shaped, not API-shaped
+│   ├── platform_darwin.go
+│   ├── platform_windows.go
+│   └── platform_linux.go
+└── module/                 # module scaffolding: Module iface, Host client, serve loop
 
-- [Azure DevOps Pull Requests](.azuredevops/PULL_REQUEST_TEMPLATE.md) ([`.azuredevops\PULL_REQUEST_TEMPLATE.md`](`.azuredevops\PULL_REQUEST_TEMPLATE.md`))
-- [Azure Pipelines](.pipelines/pipeline.yml) ([`.pipelines/pipeline.yml`](`.pipelines/pipeline.yml`))
-- [GitHub Workflows](.github/workflows/)
-  - [Super Linter](.github/workflows/linter.yml) ([`.github/workflows/linter.yml`](`.github/workflows/linter.yml`))
-  - [Sample Workflows](.github/workflows/workflow.yml) ([`.github/workflows/workflow.yml`](`.github/workflows/workflow.yml`))
-- [GitHub Pull Requests](.github/PULL_REQUEST_TEMPLATE.md) ([`.github/PULL_REQUEST_TEMPLATE.md`](`.github/PULL_REQUEST_TEMPLATE.md`))
-- [GitHub Issues](.github/ISSUE_TEMPLATE/)
-  - [Feature Requests](.github/ISSUE_TEMPLATE/FEATURE_REQUEST.md) ([`.github/ISSUE_TEMPLATE/FEATURE_REQUEST.md`](`.github/ISSUE_TEMPLATE/FEATURE_REQUEST.md`))
-  - [Bug Reports](.github/ISSUE_TEMPLATE/BUG_REPORT.md) ([`.github/ISSUE_TEMPLATE/BUG_REPORT.md`](`.github/ISSUE_TEMPLATE/BUG_REPORT.md`))
-- [Codeowners](.github/CODEOWNERS) ([`.github/CODEOWNERS`](`.github/CODEOWNERS`)) _adjust usernames once cloned_
-- [Wiki and Documentation](docs/) ([`docs/`](`docs/`))
-- [gitignore](.gitignore) ([`.gitignore`](.gitignore))
-- [gitattributes](.gitattributes) ([`.gitattributes`](.gitattributes))
-- [Changelog](CHANGELOG.md) ([`CHANGELOG.md`](`CHANGELOG.md`))
-- [Code of Conduct](CODE_OF_CONDUCT.md) ([`CODE_OF_CONDUCT.md`](`CODE_OF_CONDUCT.md`))
-- [Contribution](CONTRIBUTING.md) ([`CONTRIBUTING.md`](`CONTRIBUTING.md`))
-- [License](LICENSE) ([`LICENSE`](`LICENSE`)) _adjust projectname once cloned_
-- [Readme](README.md) ([`README.md`](`README.md`))
-- [Security](SECURITY.md) ([`SECURITY.md`](`SECURITY.md`))
+weaveplatform-agent
+├── cmd/
+│   ├── weaveboot/          # supervises core; only thing launchd/SCM starts
+│   ├── weaveagentd/        # core daemon (root/SYSTEM) — Zone A, CGO_ENABLED=0
+│   ├── weaveagent/         # CLI, thin client over local socket
+│   └── weaveportal/        # user-session UI — Zone B, AppKit/WinUI3
+├── internal/
+│   ├── identity/           # device identity, attestation, TPM/Secure Enclave, enrolment
+│   ├── transport/          # GateWeave channel; vsock/HvSocket when guest
+│   ├── policy/             # fetch, verify, evaluate, notify
+│   ├── store/              # namespaced, encrypted at rest
+│   ├── supervisor/         # spawn, verify signature, privilege drop, health, swap, drain
+│   ├── capability/         # host probe; gates module launch
+│   ├── lifecycle/          # fetch, stage, promote, N-1 rollback
+│   ├── ui/                 # surface brokerage — core never draws
+│   └── bus/                # module event fan-out
+├── template/               # scaffolding for a new product module
+└── packaging/              # pkg, MSI, deb — the immutable install footprint
 
+weaveplatform-manifest
+├── channels/               # signed: which module versions constitute a known-good set
+│   ├── stable.json
+│   ├── beta.json
+│   └── pinned/             #   self-hosted, mapped to service versions
+└── keys/                   # signing chain, rotation policy
 
-## Status
+## Product tier
+sightweave
+├── cmd/sightweave/         # the service
+├── agent/                  # module binary — ships and versions with the product
+│   └── cmd/sightweave-agent/
+├── sdk/                    # client library for this service
+└── api/                    # surfaces used by nobody else (shared ones → weaveplatform-api)
 
-[![Super Linter](<https://github.com/segraef/Template/actions/workflows/linter.yml/badge.svg>)](<https://github.com/segraef/Template/actions/workflows/linter.yml>)
+appweave         deviceweave      labweave        remoteweave      sightweave
+   ├─ agent/        ├─ agent/        ├─ agent/       ├─ agent/         ├─ agent/
 
-[![Sample Workflow](<https://github.com/segraef/Template/actions/workflows/workflow.yml/badge.svg>)](<https://github.com/segraef/Template/actions/workflows/workflow.yml>)
+gateweave        hostweave                          # server-side only, no module
 
-## Creating a repository from a template
+guestweave       ├─ agent/
+guestweave-macos                    # Virtualization / Hypervisor.framework
+guestweave-windows                  # HCS
+guestweave-linux                    # libvirt
 
-You can [generate](https://github.com/segraef/Template/generate) a new repository with the same directory structure and files as an existing repository. More details can be found [here][CreateFromTemplate].
+## guestweave
+### product description: 
+a cli tool guest vm management. can create, start, stop, restart, migrate, snapshot and delete guest vms.
+3 seperate vm mangers for linux, windows and macos hosts. linux can run linux on linux and windows on linux. 
+macos can run mac on mac, linux on mac and windows on mac. windows can run windows on windows and linux on windows.
+Not bare metal, but a vm manager for guest vm management. Windows engine is built upon hcs. macos engine is built
+on framework.virtualization for macos and linux and framework.hypervisor for windows. linux engine is built upon libvirt.
+can run headless and headed for all guest/vm combinations. exposes all services via a restful api.
 
-## Reporting Issues and Feedback
-
-### Issues and Bugs
-
-If you find any bugs, please file an issue in the [GitHub Issues][GitHubIssues] page. Please fill out the provided template with the appropriate information.
-
-If you are taking the time to mention a problem, even a seemingly minor one, it is greatly appreciated, and a totally valid contribution to this project. **Thank you!**
-
-## Feedback
-
-If there is a feature you would like to see in here, please file an issue or feature request in the [GitHub Issues][GitHubIssues] page to provide direct feedback.
-
-## Contribution
-
-If you would like to become an active contributor to this repository or project, please follow the instructions provided in [`CONTRIBUTING.md`][Contributing].
-
-## Learn More
-
-* [GitHub Documentation][GitHubDocs]
-* [Azure DevOps Documentation][AzureDevOpsDocs]
-* [Microsoft Azure Documentation][MicrosoftAzureDocs]
-
-<!-- References -->
-
-<!-- Local -->
-[ProjectSetup]: <https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions>
-[CreateFromTemplate]: <https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/creating-a-repository-from-a-template>
-[GitHubDocs]: <https://docs.github.com/>
-[AzureDevOpsDocs]: <https://docs.microsoft.com/en-us/azure/devops/?view=azure-devops>
-[GitHubIssues]: <https://github.com/segraef/Template/issues>
-[Contributing]: CONTRIBUTING.md
-
-<!-- External -->
-[Az]: <https://img.shields.io/powershellgallery/v/Az.svg?style=flat-square&label=Az>
-[AzGallery]: <https://www.powershellgallery.com/packages/Az/>
-[PowerShellCore]: <https://github.com/PowerShell/PowerShell/releases/latest>
-
-<!-- Docs -->
-[MicrosoftAzureDocs]: <https://docs.microsoft.com/en-us/azure/>
-[PowerShellDocs]: <https://docs.microsoft.com/en-us/powershell/>
+## hostweave
+### product description:
+a host orchestrator for host management. can leverage guestweave to call on the features of the guest vm manager
