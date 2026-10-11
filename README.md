@@ -1,96 +1,58 @@
-## Platform tier
-weaveplatform-api
-├── proto/                  # gRPC IDL
-│   ├── agent/v1/           #   core ↔ module: handshake, host services, lifecycle
-│   ├── guestweave/v1/      #   per-service RPC surfaces
-│   ├── hostweave/v1/
-│   └── gateweave/v1/
-├── openapi/                # REST surfaces (generated from proto where they overlap)
-│   ├── guestweave.yaml
-│   └── hostweave.yaml
-├── events/                 # event envelopes, topic definitions
-├── schemas/                # shared domain types: Device, Session, Identity, Error, AuthClaims
-├── gen/go/                 # generated Go — the only thing consumers import
-└── buf.yaml                # breaking-change detection in CI
+# Weave platform knowledge base
 
-weaveplatform-sdk
-├── errors/                 # structured error taxonomy
-├── log/                    # slog conventions, redaction
-├── config/                 # schema, precedence, validation
-├── retry/                  # backoff, circuit breaker
-├── platform/               # seam over go-bindings-*: capability-shaped, not API-shaped
-│   ├── platform_darwin.go
-│   ├── platform_windows.go
-│   └── platform_linux.go
-└── module/                 # module scaffolding: Module iface, Host client, serve loop
+This repository is the canonical source for public Weave documentation and its website, **weaveplatform.run**. It serves consumers, developers and operators. Confidential implementation evidence and operational knowledge live in the private **weaveplatform.dev** companion.
 
-weaveplatform-agent
-├── cmd/
-│   ├── weaveboot/          # supervises core; only thing launchd/SCM starts
-│   ├── weaveagentd/        # core daemon (root/SYSTEM) — Zone A, CGO_ENABLED=0
-│   ├── weaveagent/         # CLI, thin client over local socket
-│   └── weaveportal/        # user-session UI — Zone B, AppKit/WinUI3
-├── internal/
-│   ├── identity/           # device identity, attestation, TPM/Secure Enclave, enrolment
-│   ├── transport/          # GateWeave channel; vsock/HvSocket when guest
-│   ├── policy/             # fetch, verify, evaluate, notify
-│   ├── store/              # namespaced, encrypted at rest
-│   ├── supervisor/         # spawn, verify signature, privilege drop, health, swap, drain
-│   ├── capability/         # host probe; gates module launch
-│   ├── lifecycle/          # fetch, stage, promote, N-1 rollback
-│   ├── ui/                 # surface brokerage — core never draws
-│   └── bus/                # module event fan-out
-├── template/               # scaffolding for a new product module
-└── packaging/              # pkg, MSI, deb — the immutable install footprint
+The first release covers the platform HLD and GuestWeave, HostWeave, Imageweave, agent-core and agent-modules. Diagrams use **Archify**. Claims follow inspected code at exact commits; the compatibility register makes incomplete integrations explicit.
 
-weaveplatform-manifest
-├── channels/               # signed: which module versions constitute a known-good set
-│   ├── stable.json
-│   ├── beta.json
-│   └── pinned/             #   self-hosted, mapped to service versions
-└── keys/                   # signing chain, rotation policy
+## Local use
 
-## Product tier
-<product_name>weave
-├── cmd/<product_name>weave/# the service
-├── internal/               # the internal components of the product
-├── agent/                  # module binary — ships and versions with the product
-│   └── cmd/<product_name>weave-agent/
-├── sdk/                    # client library for this service
-└── api/                    # surfaces used by nobody else (shared ones → weaveplatform-api)
+Use Node **22.23.3** and npm:
 
-appweave         deviceweave      labweave        remoteweave      sightweave
-   ├─ agent/        ├─ agent/        ├─ agent/       ├─ agent/         ├─ agent/
+```bash
+npm ci
+npm run start
+```
 
-gateweave        hostweave                          # server-side only, no module
+For the complete static website, including search:
 
-guestweave       ├─ agent/
-guestweave-macos                    # Virtualization / Hypervisor.framework
-guestweave-windows                  # HCS
-guestweave-linux                    # libvirt
+```bash
+npm run build
+npm run serve
+```
 
-## guestweave
-### product description: 
-a cli tool for guest vm management. Not bare metal, but a vm manager for guest vm management.
-3 seperate vm mangers exist covering linux, windows and macos hosts. 
-linux can run linux on linux and windows on linux. 
-macos can run mac on mac, linux on mac and windows on mac. 
-windows can run windows on windows and linux on windows.
+## Verification
 
-Windows engine is built upon hcs. macos engine is built on virtualization.framework for macos and linux 
-and Hypervisor.framework for windows. linux engine is built upon libvirt.
-vm's can run headless and headed for all guest/vm combinations. All cli operations are exposed via a restful api.
+```bash
+npm run validate
+npm test
+npm run build
+npm run check:links
+npm run typecheck
+npm run diagrams:visual
+npm run check:browser
+```
 
-supports commands like create, start, stop, restart, migrate, clone, snapshot, suspend, migrate, prune and delete 
-guest vms. Additionally it supports the ability to run multiple guest vms on the same host.
-macOS images are provisioned from a apple CDW supplied IPSW. Windows images are provisioned from a microsoft CDN. 
-Linux images are provisioned from a linux distribution CDN. Remote commands are supported for all guest vms, such 
-as resolve ip, ssh, login, logout and restart. All OS install options can be driven either as attended (via the ui) 
-or unattended using OS specific kickstart tools or keypress scripts.
+Browser checks use installed Chrome on macOS and the runner browser in CI. Override the site browser with `CHROME_BIN` if necessary. Archify uses its packaged browser discovery. Its delivery receipt, automated browser evidence and perceptual review are separate claims.
 
-A basic ui is provided to allow for the management of guest vms as well. But tool is primarily expected to be used via the cli.
+## Layout
 
-## hostweave
-### product description:
-a host orchestrator for host management. can leverage guestweave to call on the features of the guest vm manager orchestrator
-deploys into cloud. 
+| Location | Owns |
+| --- | --- |
+| `docs/` | Authored product and platform knowledge |
+| `diagrams/sources/` | Canonical typed diagram specifications |
+| `sources/` | Repository inventory, exact source pins and reviewed contract snapshots |
+| `site/` | Docusaurus navigation, pages and static build |
+| `packages/docs-kit/` | Shared theme, components and content schema |
+| `tools/archify/` | Checksummed renderer distribution and third-party notices |
+| `scripts/` | Content, evidence, diagram, browser and publication checks |
+| `deployment/` | Hosting prerequisites and release procedures |
+
+See [contribution guidance](CONTRIBUTING.md), [publishing setup](deployment/README.md) and the [content roadmap](docs/development/roadmap.md).
+
+## Companion bootstrap
+
+`npm run companion:prepare -- --out /absolute/empty/path` prepares an independent private repository with the same checks and a checksummed bootstrap of the shared kit. Add `--evidence-dir /absolute/evidence/cache` to include the selected private contract snapshots. It does not copy credentials, Git metadata, node_modules or public product prose.
+
+Until the first public docs-kit release exists, the private site uses that recorded bootstrap. Later releases are immutable archives from this repository; update the private pin through a reviewed change.
+
+No live publication is implied by a successful local build. Cloudflare deployment remains disabled until the account and access setup pass the documented checks.

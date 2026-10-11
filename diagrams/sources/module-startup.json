@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Capability module startup",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1240,
+      620
+    ]
+  },
+  "participants": [
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Agent core"
+    },
+    {
+      "id": "module",
+      "type": "backend",
+      "label": "Module SDK"
+    },
+    {
+      "id": "services",
+      "type": "security",
+      "label": "Host services"
+    }
+  ],
+  "messages": [
+    {
+      "from": "core",
+      "to": "module",
+      "y": 180,
+      "label": "Launch verified binary",
+      "variant": "security"
+    },
+    {
+      "from": "module",
+      "to": "core",
+      "y": 230,
+      "label": "Handshake: protocol and address",
+      "variant": "return"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 280,
+      "label": "Init with host services and config"
+    },
+    {
+      "from": "module",
+      "to": "services",
+      "y": 330,
+      "label": "Authenticated host RPC",
+      "variant": "security"
+    },
+    {
+      "from": "module",
+      "to": "core",
+      "y": 380,
+      "label": "Init completes",
+      "variant": "return"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 430,
+      "label": "Start"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 480,
+      "label": "Health"
+    },
+    {
+      "from": "module",
+      "to": "core",
+      "y": 530,
+      "label": "Module health",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Before lifecycle",
+      "items": [
+        "Unsupported protocol windows are rejected before module Init."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "SDK ownership",
+      "items": [
+        "The SDK serves lifecycle RPCs and brokers the Host interface."
+      ]
+    }
+  ]
+}

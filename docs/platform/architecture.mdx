@@ -1,0 +1,47 @@
+---
+title: Platform architecture
+description: The implemented responsibilities and connections between Weave products.
+product: platform
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- hostweave:agent/runtime/guestweave/guestweave.go
+- imageweave:pkg/delivery/native.go
+- agent-core:internal/core/core.go
+---
+
+The platform separates **placement**, **VM lifecycle**, **image construction** and **guest capabilities**. Those responsibilities connect through explicit interfaces; a common product family does not make every artifact or protocol interchangeable.
+
+<Diagram id="platform-context" title="Platform context and execution boundaries">
+HostWeave assigns work to a host agent. Its GuestWeave adapter invokes a local CLI. Imageweave hands construction output to OCI tooling through a build manifest. Guest capabilities live behind agent core and its modules.
+</Diagram>
+
+## Responsibilities
+
+| Area | Owns | Important boundary |
+| --- | --- | --- |
+| GuestWeave | Local VM lifecycle and host-specific execution | Separate macOS and Windows implementations |
+| HostWeave | Control-plane APIs, placement and work execution coordination | Host agents execute through runtime adapters |
+| Imageweave | Reviewed image scenarios, construction and qualification paths | Construction alone does not grant runtime acceptance |
+| Agent core | Authenticated host services, module verification and supervision | Capability modules execute as separate processes |
+| Agent modules | The module SDK and OS-specific capabilities | SDK and module releases have their own versions |
+
+## Execution and agent roles
+
+The HostWeave host agent is the process responsible for executing work assigned by the orchestration control plane. Its GuestWeave VM adapter invokes a `weave` binary and interprets the result. The agent core running in a guest is a different process: it supervises capability modules and brokers host/guest communication.
+
+Document these roles separately. A box labelled only “agent” hides two different lifecycles and trust boundaries.
+
+## Image and release dependencies
+
+The shared OCI layer owns the Weave artifact format and artifact tooling. Release-channel data identifies promoted module and image versions. They appear in this first release as dependencies of the selected products rather than separate product documentation areas.
+
+A build manifest, registry artifact, qualification result and promoted release are distinct objects. There is no verified universal build → publish → promote → run path in this baseline. The [compatibility register](compatibility.md) explains the current image-format gap.
+
+## Design baseline
+
+This HLD follows the pinned implementation baseline dated 11 October 2026. [Imageweave’s native construction path](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/pkg/delivery/native.go) and [agent-core assembly](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/core/core.go) provide public evidence. The HostWeave adapter evidence is retained in the internal knowledge base.

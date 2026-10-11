@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Weave agent: supervision and host services",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      720
+    ]
+  },
+  "components": [
+    {
+      "id": "manager",
+      "type": "external",
+      "label": "Service manager",
+      "sublabel": "launchd, systemd or SCM",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "boot",
+      "type": "backend",
+      "label": "weaveboot",
+      "sublabel": "Stage, supervise and roll back",
+      "pos": [
+        350,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Agent core",
+      "sublabel": "Verify and supervise modules",
+      "pos": [
+        660,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "module",
+      "type": "backend",
+      "label": "Capability module",
+      "sublabel": "Separate module process",
+      "pos": [
+        970,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "store",
+      "type": "security",
+      "label": "Host services",
+      "sublabel": "Identity, policy, store and bus",
+      "pos": [
+        660,
+        410
+      ],
+      "size": [
+        220,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "to": "boot",
+      "label": "Start service",
+      "from": "manager"
+    },
+    {
+      "to": "core",
+      "label": "Supervise",
+      "from": "boot"
+    },
+    {
+      "to": "module",
+      "label": "Verify and launch",
+      "from": "core"
+    },
+    {
+      "to": "store",
+      "label": "Serve RPC",
+      "from": "core",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Verification",
+      "items": [
+        "Core refuses module execution when verification is unavailable."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Ownership",
+      "items": [
+        "Service manager owns weaveboot; core owns module supervision."
+      ]
+    }
+  ]
+}

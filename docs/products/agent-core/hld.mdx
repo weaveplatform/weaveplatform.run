@@ -1,0 +1,46 @@
+---
+title: 'Agent core: HLD'
+description: Verification, supervision, local host services and the guest channel.
+product: agent-core
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- agent-core:cmd/weaveboot/main.go
+- agent-core:cmd/weave-agent/main.go
+- agent-core:internal/core/core.go
+- agent-core:proto/weave/agent/v1/module.proto
+---
+
+Agent core is the supervised capability runtime on a device or guest. It verifies and launches modules, offers host services and assembles the communication and policy boundaries those modules use.
+
+<Diagram id="agent-core" title="Agent supervision and host services">
+The OS service manager runs weaveboot. weaveboot supervises core, and core verifies and supervises capability modules. Core also provides the host-service RPC surface.
+</Diagram>
+
+## Process ownership
+
+The installed service entrypoint is `weaveboot`. It stages and supervises core and provides rollback behaviour. The core binary is `weave-agent`; local control is exposed through `weavectl`. These names replace the speculative binary names in the original repository scaffold.
+
+Core owns the module registry and supervisor. A module is a separate process, with its own negotiated protocol and lifecycle. It is not an in-process product plugin.
+
+## Runtime assembly
+
+Core assembles identity, policy management, namespaced storage, host services, the event bus, local control and guest transport. The host-service surface lets modules obtain capabilities without owning core’s private keys or another module’s namespace.
+
+Transport selection depends on host capabilities and configuration. Unsupported selection disables that channel rather than inventing a transport. The guest channel’s host-authentication key is a separate trust input from the keys used to verify module/channel data.
+
+## Verification and failure handling
+
+When no module verifier is configured, the fallback refuses execution. Storage failure can affect identity and queue services. The inspected core distinguishes a locked store that stops startup from other failures that expose degraded/unavailable services; this is a concrete condition to preserve in future recovery guides.
+
+weaveboot’s readiness and promotion behaviour is separate from a module’s health. A core process being ready does not mean every capability module is healthy.
+
+## Protocol authority
+
+Core’s `proto/` owns the agent wire contract. Core generates a private implementation copy; the module SDK generates its own copy against a pinned release. Channel and module JSON schemas are also published from core.
+
+Evidence: [weaveboot entrypoint](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/cmd/weaveboot/main.go), [core assembly and failure handling](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/core/core.go), [module lifecycle protocol](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/proto/weave/agent/v1/module.proto).

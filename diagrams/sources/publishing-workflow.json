@@ -1,0 +1,126 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Documentation review and production release",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "review",
+      "label": "Review"
+    },
+    {
+      "id": "production",
+      "label": "Production"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "proposal",
+      "lane": "review",
+      "col": 0,
+      "type": "external",
+      "label": "Pull request",
+      "sublabel": "Evidence and prose"
+    },
+    {
+      "id": "pr-checks",
+      "lane": "review",
+      "col": 1,
+      "type": "backend",
+      "label": "PR checks",
+      "sublabel": "Build and browsers"
+    },
+    {
+      "id": "main-push",
+      "lane": "review",
+      "col": 2,
+      "type": "backend",
+      "label": "Main push",
+      "sublabel": "Reviewed merge"
+    },
+    {
+      "id": "verified-build",
+      "lane": "production",
+      "col": 2,
+      "type": "database",
+      "label": "Build artifact",
+      "sublabel": "Passing main CI"
+    },
+    {
+      "id": "release-gate",
+      "lane": "production",
+      "col": 3,
+      "type": "security",
+      "label": "Release gate",
+      "sublabel": "Production approval"
+    },
+    {
+      "id": "upload",
+      "lane": "production",
+      "col": 4,
+      "type": "cloud",
+      "label": "Pages upload",
+      "sublabel": "Exact CI artifact"
+    },
+    {
+      "id": "check-live",
+      "lane": "production",
+      "col": 5,
+      "type": "security",
+      "label": "Smoke checks",
+      "sublabel": "Commit and access"
+    }
+  ],
+  "edges": [
+    {
+      "from": "proposal",
+      "to": "pr-checks",
+      "label": "Validate"
+    },
+    {
+      "from": "pr-checks",
+      "to": "main-push",
+      "label": "Review"
+    },
+    {
+      "from": "main-push",
+      "to": "verified-build",
+      "label": "Rebuild"
+    },
+    {
+      "from": "verified-build",
+      "to": "release-gate",
+      "label": "Success"
+    },
+    {
+      "from": "release-gate",
+      "to": "upload",
+      "label": "Approve",
+      "variant": "security"
+    },
+    {
+      "from": "upload",
+      "to": "check-live",
+      "label": "Verify"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Enablement",
+      "items": [
+        "Deployment remains disabled until hosting and Access are verified."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Recovery",
+      "items": [
+        "A failed smoke check requires investigation or deployment rollback."
+      ]
+    }
+  ]
+}

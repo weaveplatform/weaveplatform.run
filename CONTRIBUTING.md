@@ -1,17 +1,13 @@
-# Contribution
+# Contributing
 
-Thanks for considering contributing to this project! We are really glad you are reading this, because we need volunteer developers to help this project come to fruition.
+Start with the [documentation workflow](docs/development/documentation.md). Explain the knowledge change, its audience and the implementation evidence used to verify it.
 
-Please note we have a code of conduct, please follow it in all your interactions with the project.
+- Inspect entrypoints, handlers, interfaces and deployment files before relying on an existing README.
+- Record exact source commits and paths. Separate static inspection from runtime acceptance.
+- Update prose and diagram sources together when a component or relationship changes.
+- Add private implementation evidence and runbooks to `weaveplatform.dev`; publicly exported contracts require publication review.
+- Keep generated contract definitions authoritative upstream.
 
-## Issues
+Run the validation, build, link and browser checks listed in the README. Inspect Archify screenshots in both themes before approval. CI measurements are evidence for containment, not an automatic judgement of visual polish.
 
-If you find any bugs, please file an issue in the [GitHub issues][GitHubIssues] page. Please fill out the provided template with the appropriate information.
-
-If you are taking the time to mention a problem, even a seemingly minor one, it is greatly appreciated, and a totally valid contribution to this project. Thank you!
-
-<!-- References -->
-
-<!-- Local -->
-[GitHubIssues]: <https://github.com/segraef/Template/issues>
-[Contributing]: CONTRIBUTING.md
+Submit documentation defects through [this repository's issues](https://github.com/weaveplatform/weaveplatform.run/issues). For confidential findings use the private companion or GitHub's private security-reporting feature.

@@ -1,0 +1,76 @@
+schema_version: 1
+diagrams:
+- id: documentation-architecture
+  type: architecture
+  title: Documentation ownership and publication
+  source: diagrams/sources/documentation-architecture.json
+  audience: public
+  evidence:
+  - documentation:scripts/prepare-companion.mjs
+  - documentation:.github/workflows/quality-gate.yml
+  - documentation:.github/workflows/deploy.yml
+- id: publishing-workflow
+  type: workflow
+  title: Documentation review and production release
+  source: diagrams/sources/publishing-workflow.json
+  audience: public
+  evidence:
+  - documentation:.github/workflows/quality-gate.yml
+  - documentation:.github/workflows/deploy.yml
+- id: agent-core
+  type: architecture
+  title: 'Weave agent: supervision and host services'
+  source: diagrams/sources/agent-core.json
+  audience: public
+  evidence:
+  - agent-core:internal/core/core.go
+  - agent-core:cmd/weaveboot/main.go
+- id: guestweave-macos
+  type: architecture
+  title: GuestWeave on a macOS host
+  source: diagrams/sources/guestweave-macos.json
+  audience: public
+  evidence:
+  - guestweave-macos:internal/httpapi/server.go
+  - guestweave-macos:go.mod
+- id: guestweave-windows
+  type: architecture
+  title: GuestWeave on a Windows host
+  source: diagrams/sources/guestweave-windows.json
+  audience: public
+  evidence:
+  - guestweave-windows:internal/serve/http.go
+  - guestweave-windows:internal/oci/oci.go
+- id: hostweave
+  type: architecture
+  title: 'HostWeave: placement to VM execution'
+  source: diagrams/sources/hostweave.json
+  audience: public
+  evidence:
+  - hostweave:internal/server/server.go
+  - hostweave:agent/runtime/guestweave/guestweave.go
+- id: imageweave-construction
+  type: workflow
+  title: 'Imageweave: construction is not runtime qualification'
+  source: diagrams/sources/imageweave-construction.json
+  audience: public
+  evidence:
+  - imageweave:pkg/delivery/native.go
+  - imageweave:pkg/plan/plan.go
+- id: module-startup
+  type: sequence
+  title: Capability module startup
+  source: diagrams/sources/module-startup.json
+  audience: public
+  evidence:
+  - agent-modules:sdk/modulesdk/serve.go
+  - agent-modules:sdk/modulesdk/module.go
+- id: platform-context
+  type: architecture
+  title: 'Weave platform: execution and image construction'
+  source: diagrams/sources/platform-context.json
+  audience: public
+  evidence:
+  - hostweave:agent/runtime/guestweave/guestweave.go
+  - imageweave:pkg/delivery/native.go
+  - agent-core:internal/core/core.go

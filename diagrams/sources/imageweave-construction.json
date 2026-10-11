@@ -1,0 +1,110 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Imageweave: construction is not runtime qualification",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "construction",
+      "label": "Construction"
+    },
+    {
+      "id": "verification",
+      "label": "Artifact verification"
+    }
+  ],
+  "mainPath": [
+    "inputs",
+    "plan",
+    "packer",
+    "import",
+    "inspect"
+  ],
+  "nodes": [
+    {
+      "id": "inputs",
+      "lane": "construction",
+      "col": 0,
+      "type": "external",
+      "label": "Pinned inputs",
+      "sublabel": "Media + recipe"
+    },
+    {
+      "id": "plan",
+      "lane": "construction",
+      "col": 1,
+      "type": "backend",
+      "label": "Resolve plan",
+      "sublabel": "Scenario and template"
+    },
+    {
+      "id": "packer",
+      "lane": "construction",
+      "col": 2,
+      "type": "backend",
+      "label": "Packer build",
+      "sublabel": "Install or restore"
+    },
+    {
+      "id": "import",
+      "lane": "verification",
+      "col": 3,
+      "type": "backend",
+      "label": "OCI handoff",
+      "sublabel": "Manifest-listed outputs"
+    },
+    {
+      "id": "inspect",
+      "lane": "verification",
+      "col": 4,
+      "type": "security",
+      "label": "Inspect",
+      "sublabel": "Deep + strict"
+    }
+  ],
+  "edges": [
+    {
+      "from": "inputs",
+      "to": "plan",
+      "label": "Resolve",
+      "role": "main"
+    },
+    {
+      "from": "plan",
+      "to": "packer",
+      "label": "Build",
+      "role": "main"
+    },
+    {
+      "from": "packer",
+      "to": "import",
+      "label": "Manifest",
+      "role": "main"
+    },
+    {
+      "from": "import",
+      "to": "inspect",
+      "label": "Inspect",
+      "role": "main"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Qualification boundary",
+      "items": [
+        "A constructed and inspected artifact still needs runtime evidence."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Publication boundary",
+      "items": [
+        "Native construction does not publish or promote an image."
+      ]
+    }
+  ]
+}

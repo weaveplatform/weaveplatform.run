@@ -1,0 +1,48 @@
+---
+title: 'GuestWeave on macOS: HLD'
+description: VM lifecycle, host backend and HTTP boundaries on macOS.
+product: guestweave
+audience:
+- consumer
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- guestweave-macos:internal/httpapi/server.go
+- guestweave-macos:internal/httpapi/router_schema_test.go
+- guestweave-macos:go.mod
+---
+
+GuestWeave on macOS brings CLI and HTTP operations into a shared command and VM service layer. The HTTP API is an adapter over those operations. MCP is a separate server surface, so it must receive its own reference and authentication review.
+
+<Diagram id="guestweave-macos" title="GuestWeave on a macOS host">
+Requests enter through a product interface, reach shared lifecycle operations and invoke the host backend. VM files retain the local state needed by later operations.
+</Diagram>
+
+## Components and boundaries
+
+| Component | Responsibility |
+| --- | --- |
+| CLI and HTTP adapters | Parse product requests and return operation results |
+| Command layer | Share lifecycle behaviour between entrypoints |
+| VM service | Coordinate VM configuration and local state |
+| Host backend | Invoke macOS virtualization facilities |
+| VM files | Persist disks, configuration and VM state |
+
+Backend selection is host-architecture and guest-OS dependent. The presence of a code path does not certify every possible guest combination.
+
+## HTTP interface
+
+The inspected server binds to `127.0.0.1` and mounts product routes under `/weave`. VM operations include creation, `run`, stop, shutdown, restart, snapshots and guest execution. Its specification is served at `/weave/openapi.yaml`.
+
+This loopback boundary is material to deployment guidance. Any future remote exposure guide must establish authentication, transport protection and origin handling for that specific setup.
+
+## Orchestration integration
+
+HostWeave’s GuestWeave runtime adapter calls the local CLI. Keep binary version, arguments, output parsing and readiness behaviour in the integration contract. The local HTTP API is a separate integration surface.
+
+## Verification and limitations
+
+The repository includes a router/spec test that compares served HTTP methods and paths with OpenAPI operations. This HLD is code-inspected at the recorded `main` baseline; macOS VM acceptance was not exercised for this documentation release. API reference must also verify request and response semantics, beyond route parity.

@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GuestWeave on a macOS host",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      720
+    ]
+  },
+  "components": [
+    {
+      "id": "client",
+      "type": "external",
+      "label": "User or integration",
+      "sublabel": "CLI, HTTP or MCP",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "commands",
+      "type": "backend",
+      "label": "Command layer",
+      "sublabel": "Shared lifecycle operations",
+      "pos": [
+        350,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "vmservice",
+      "type": "backend",
+      "label": "VM service",
+      "sublabel": "Configuration and state",
+      "pos": [
+        660,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "backend",
+      "type": "backend",
+      "label": "Host backend",
+      "sublabel": "Apple virtualization APIs",
+      "pos": [
+        970,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "database",
+      "label": "VM files",
+      "sublabel": "Disks and identity state",
+      "pos": [
+        660,
+        410
+      ],
+      "size": [
+        220,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "to": "commands",
+      "label": "Invoke",
+      "from": "client"
+    },
+    {
+      "to": "vmservice",
+      "label": "Lifecycle",
+      "from": "commands"
+    },
+    {
+      "to": "backend",
+      "label": "Native VM calls",
+      "from": "vmservice"
+    },
+    {
+      "to": "storage",
+      "label": "Persist",
+      "from": "vmservice",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Host responsibility",
+      "items": [
+        "GuestWeave owns local VM state and lifecycle."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Guest matrix",
+      "items": [
+        "Host architecture and guest OS constrain backend selection."
+      ]
+    }
+  ]
+}

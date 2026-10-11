@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {"title": "Weave platform: execution and image construction", "locale": "en", "quality_profile": "showcase", "viewBox": [1240, 720]},
+  "components": [
+    {"id": "operator", "type": "external", "label": "Operator", "sublabel": "API, UI or hwctl", "pos": [40, 140], "size": [190, 84]},
+    {"id": "orchestrator", "type": "backend", "label": "HostWeave", "sublabel": "Placement and work leases", "pos": [360, 140], "size": [230, 84]},
+    {"id": "hostagent", "type": "backend", "label": "Host agent", "sublabel": "Runtime adapter", "pos": [690, 140], "size": [220, 84]},
+    {"id": "vmmanager", "type": "backend", "label": "GuestWeave", "sublabel": "Host VM lifecycle", "pos": [1020, 140], "size": [190, 84]},
+    {"id": "guestagent", "type": "backend", "label": "Guest agent core", "sublabel": "Supervised capabilities", "pos": [1020, 400], "size": [190, 84]},
+    {"id": "imagebuilder", "type": "backend", "label": "Imageweave", "sublabel": "Packer construction", "pos": [40, 400], "size": [190, 84]},
+    {"id": "artifacttools", "type": "backend", "label": "Weave OCI", "sublabel": "Artifact handoff and checks", "pos": [360, 400], "size": [230, 84]}
+  ],
+  "connections": [
+    {"from": "operator", "to": "orchestrator", "label": "HTTPS API", "variant": "emphasis"},
+    {"from": "orchestrator", "to": "hostagent", "label": "Work leases", "variant": "emphasis"},
+    {"from": "hostagent", "to": "vmmanager", "label": "CLI adapter", "variant": "emphasis"},
+    {"from": "vmmanager", "to": "guestagent", "label": "Guest channel", "labelDy": 24},
+    {"from": "imagebuilder", "to": "artifacttools", "label": "Build manifest"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Execution", "items": ["HostWeave places work; GuestWeave owns VM lifecycle."]},
+    {"dot": "amber", "title": "Compatibility", "items": ["Image construction does not prove runtime compatibility."]},
+    {"dot": "violet", "title": "Agent roles", "items": ["The host agent and guest agent core are separate processes."]}
+  ]
+}

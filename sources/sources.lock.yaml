@@ -1,0 +1,144 @@
+schema_version: 1
+sources:
+- id: agent-core
+  repository: weaveplatform/weaveplatform-agent-core
+  revision: 58f13ffcdba1641a692f985b3b26d053bb467da5
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/core/core.go
+    sha256: 1234332299f236c547c984987709bbe4e1304cd28350a4cabae65b1b91204d9e
+  - path: cmd/weaveboot/main.go
+    sha256: a7737ccc0aa51c5556a47ccb0f6a19739fb8274b0714d3b729af4214593f08d7
+  - path: cmd/weave-agent/main.go
+    sha256: 72a6944d55f179a2eacb4b2cb65eb6462ecd2ab7ea3ae72f7a4c5cb86c998c59
+  - path: proto/weave/agent/v1/handshake.proto
+    sha256: f1fc395988c456663cbf75badcbf5de6d46a9f554572344a1c320725c46c9ffd
+    snapshot: sources/contracts/agent-core/proto/weave/agent/v1/handshake.proto
+  - path: proto/weave/agent/v1/module.proto
+    sha256: b52a985552688498a391db59890e16ab14c6aadfb71e92f04ac2dba82836cc77
+    snapshot: sources/contracts/agent-core/proto/weave/agent/v1/module.proto
+  - path: proto/weave/agent/v1/registry.proto
+    sha256: 1cb6a4b087bca9d23dfde006f7f250186afe64abc297af378fa24cfd1f18f7ee
+    snapshot: sources/contracts/agent-core/proto/weave/agent/v1/registry.proto
+  - path: schema/module-manifest.schema.json
+    sha256: 00bbb805eeee39751bf48084ebf11b1bbec9d1f988221eb83fd2378674609961
+    snapshot: sources/contracts/agent-core/schema/module-manifest.schema.json
+  - path: schema/channel-manifest.schema.json
+    sha256: 31a7f0ad939fe3c9d2bc5385cdcc395bcc452cd12e705c92e162367396635c22
+    snapshot: sources/contracts/agent-core/schema/channel-manifest.schema.json
+  - path: internal/transport/transport.go
+    sha256: 45038435a23d032a6e4459c33bcad775e49b6029c7f149844501c8e78688b408
+- id: agent-modules
+  repository: weaveplatform/weaveplatform-agent-modules
+  revision: 733ce935024428cadafc68957d2d49419c28d4fb
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: sdk/modulesdk/module.go
+    sha256: 8b0feaedd3ab64031092b2e6fc28b53c3dde48f632715e48161edb94c788d26c
+  - path: sdk/modulesdk/serve.go
+    sha256: 39480f0729e0b573777243e9ac1a1089704d366606e539246fef1395afdb5e9e
+  - path: sdk/buf.gen.yaml
+    sha256: 49eba809924aabed67d632580bfd2f95b5eaac44183acbfb6aa85e1151b81193
+  - path: .github/agent-core-version
+    sha256: 11ef3020fd8f26c94d86e77b8f7affb9cfc742fa665e86ce006d2b5dc6294cd6
+  - path: go.work
+    sha256: e4c4afa9fb7d58da0fcec6ff00d39c2e3ab6bd89327924305db76ba852e0497f
+- id: hostweave
+  repository: weaveplatform/hostweave
+  revision: 5080abf8d1a51232246b178d4be34dc9db21e4a0
+  baseline: main
+  visibility: private
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/server/server.go
+    sha256: 96c12aa042317b10511534542de74a0200c811160404cbc79eda85292940980f
+  - path: agent/runtime/guestweave/guestweave.go
+    sha256: 2db66f57e8d0c62631f2f3343d3ec46f3749003f868666fd0f09e3a7cda3f155
+  - path: pkg/images/vm.go
+    sha256: 63d500e20c06c9dbfc7b6d3654a2546d4004442df7970be362591b1653a65efa
+  - path: pkg/images/registry.go
+    sha256: 7aef343231315de5fb81dc2faf492175a9d558a4fa21dc36f36a103e8d308f8d
+  - path: Dockerfile
+    sha256: 18e4d247437e3023ff314990d6d52e0ef1a5d2beefc9ebb1acd85267f6d8fdb9
+  - path: api/openapi.yaml
+    sha256: 155ed8f348e4b2f47db5401f003198f5a587f753cc580f28d23c725f898d6a15
+  - path: api/proto/agent/v1/agent.proto
+    sha256: d2717ee169736cd3c23f576f22f5b5ac22499bd0f84231eaafd8d5f4d9979493
+- id: guestweave-macos
+  repository: weaveplatform/guestweave-cli-macos
+  revision: f77fdaafd218cfa55b12dc1d4e814d4e2d874e46
+  baseline: main
+  visibility: private
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/httpapi/server.go
+    sha256: 566ebcb22b6f20b41002d3394272485cff908445d6463b46454cb1e53c668582
+  - path: internal/httpapi/router_schema_test.go
+    sha256: 921fa7681ad0dd567056681a20a09dd3dc6c2f38433c44cef5339d264a153faa
+  - path: internal/httpapi/schema/openapi.yaml
+    sha256: 2ac5f20c2acf317b8da426f83c3c75decbbeb96504805ee2d90b1d677325d867
+  - path: go.mod
+    sha256: 40fbfb0b50feab9bd800a224aa0dd3a0f9ffe1a0b62f73f8361af49bffe500e4
+- id: guestweave-windows
+  repository: weaveplatform/guestweave-cli-windows
+  revision: 48fe4242d4d8b884e1bc464287f9a6c8f72ca275
+  baseline: main
+  visibility: private
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/serve/http.go
+    sha256: 599b3b3947b0db9dcbba14cc927738ab2396339d705b03533b8cccb0f0cfdc36
+  - path: internal/serve/openapi.json
+    sha256: 9ea7abeb8a4d7b4c9e02a969889d453698caaa53ba4a80aa8c4546ec751fdbee
+  - path: internal/serve/openapi_test.go
+    sha256: ae0efe7512882d54679bf4eae270b11d7d7c175193ad0def35ee3e8398300add
+  - path: internal/oci/oci.go
+    sha256: c79db35d029653ab9c855506341df4ffa41b7be68436b8a3b1c761e7e6576101
+  - path: go.mod
+    sha256: 01fb749536faf3fee2062b2157c64c437ed559e0bf9bc22df6cf8b8136dd9007
+- id: imageweave
+  repository: weaveplatform/imageweave
+  revision: 3f81345846d7c64bc1b9c5f8f38949a02ca462c5
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/cli/root.go
+    sha256: 745665dbc2496ac7350f9d5fd842bf143b3f8ab6ab4af0f9327f8576d172fb68
+  - path: pkg/plan/plan.go
+    sha256: 39a6fd3b0755493cecac33cfa28e5e0f2fefee4e61371323c49ea223a2b87bc6
+  - path: pkg/delivery/native.go
+    sha256: 348d9fd6dc4b319213c6e344ee0e1fe95de11e12ed2cca6059612cfb8081d536
+  - path: pkg/delivery/build.go
+    sha256: 8a52f879f4d1b4ddf061f85e7da002bd46603decf7ea1fa013b37cd914decffe
+  - path: internal/packerplugin/builder.go
+    sha256: 72faae6e93da153a31f4b1e4782aa1076383d1a12e36db11dc9f4d18a3f2e0f4
+  - path: go.mod
+    sha256: 234011f24a7d60fad0e4a74b7776f7649c3a778803db208d0dcc119850d39b24
+- id: oci
+  repository: weaveplatform/weaveplatform-oci
+  revision: 2f088490822cf14a5e9b6824bffe07e932753715
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: pkg/spec/mediatypes.go
+    sha256: 08b3fabc8d6506900e4a498a6545a2176fd8662bed1706723d59915b5eed900d
+  - path: pkg/spec/schema/vm-config-v1.schema.json
+    sha256: 282efcc29fa95088657526a56cd9620f505722145f516d446fb1f5f4635489d1
+    snapshot: sources/contracts/oci/pkg/spec/schema/vm-config-v1.schema.json
+- id: channels
+  repository: weaveplatform/weaveplatform-release-channels
+  revision: e5f1f46c740ca8a2ca7c801fe266a58c2974cd71
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: .github/agent-core-version
+    sha256: 4a2ab469c4bbaf7cbc98e6f8601e0e1e3c3832e74d2eac6038863c8a337814a3
+  - path: .github/workflows/quality-gate.yml
+    sha256: 5709155d9806a8fe18f1944f22b5b524848c4531e3021a3639bacf072d4345c6

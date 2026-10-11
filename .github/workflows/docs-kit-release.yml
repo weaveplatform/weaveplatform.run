@@ -1,0 +1,24 @@
+name: Release shared documentation kit
+on:
+  push:
+    tags: ['docs-kit-v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    if: github.repository == 'weaveplatform/weaveplatform.run'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - name: Check tag and package version match
+        run: node -e 'const p = require("./packages/docs-kit/package.json"); if (process.env.GITHUB_REF_NAME !== "docs-kit-v" + p.version) process.exit(1)'
+      - run: npm pack --workspace packages/docs-kit
+      - name: Publish immutable kit archive and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum weaveplatform-docs-kit-*.tgz > docs-kit.sha256
+          gh release create "$GITHUB_REF_NAME" weaveplatform-docs-kit-*.tgz docs-kit.sha256 --title "$GITHUB_REF_NAME" --notes 'Shared documentation theme, components and page schema. Pin the archive checksum before upgrading the private site.'

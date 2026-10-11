@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "HostWeave: placement to VM execution",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      720
+    ]
+  },
+  "components": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "Operator",
+      "sublabel": "hwctl, web UI or API",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "Control plane",
+      "sublabel": "API, placement and leases",
+      "pos": [
+        350,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "Host agent",
+      "sublabel": "Work execution and health",
+      "pos": [
+        660,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "GuestWeave CLI",
+      "sublabel": "Pinned runtime binary",
+      "pos": [
+        970,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "Control-plane state",
+      "sublabel": "Configured store and blobs",
+      "pos": [
+        350,
+        410
+      ],
+      "size": [
+        220,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "to": "server",
+      "label": "HTTPS",
+      "from": "caller"
+    },
+    {
+      "to": "agent",
+      "label": "Work leases",
+      "from": "server"
+    },
+    {
+      "to": "cli",
+      "label": "Subprocess calls",
+      "from": "agent"
+    },
+    {
+      "to": "state",
+      "label": "Read and write",
+      "from": "server",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Outbound connection",
+      "items": [
+        "The host agent initiates its connection to the control plane."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Boundary",
+      "items": [
+        "The guest runtime adapter invokes the CLI; it does not import it."
+      ]
+    }
+  ]
+}

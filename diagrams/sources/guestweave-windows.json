@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GuestWeave on a Windows host",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      720
+    ]
+  },
+  "components": [
+    {
+      "id": "client",
+      "type": "external",
+      "label": "User or integration",
+      "sublabel": "CLI or HTTP",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "commands",
+      "type": "backend",
+      "label": "Command layer",
+      "sublabel": "VM lifecycle operations",
+      "pos": [
+        350,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "hcs",
+      "type": "backend",
+      "label": "HCS backend",
+      "sublabel": "Compute-system management",
+      "pos": [
+        660,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "guest",
+      "type": "backend",
+      "label": "Guest VM",
+      "sublabel": "Windows or Linux",
+      "pos": [
+        970,
+        150
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "network",
+      "type": "cloud",
+      "label": "HCN networking",
+      "sublabel": "Host compute networks",
+      "pos": [
+        660,
+        410
+      ],
+      "size": [
+        220,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "to": "commands",
+      "label": "Invoke",
+      "from": "client"
+    },
+    {
+      "to": "hcs",
+      "label": "Host calls",
+      "from": "commands"
+    },
+    {
+      "to": "guest",
+      "label": "Create and start",
+      "from": "hcs"
+    },
+    {
+      "to": "network",
+      "label": "Network setup",
+      "from": "hcs",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Implementation",
+      "items": [
+        "Windows host execution uses HCS and HCN."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Image contract",
+      "items": [
+        "The current Windows OCI path uses GuestWeave VHDX v2."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+---
+title: 'Agent modules and SDK: HLD'
+description: The module runtime, Host interface and independently released OS capabilities.
+product: agent-modules
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- agent-modules:sdk/modulesdk/module.go
+- agent-modules:sdk/modulesdk/serve.go
+- agent-modules:sdk/buf.gen.yaml
+- agent-modules:go.work
+---
+
+The agent-modules repository owns the current module SDK and OS-specific capability modules. Modules are independent Go modules rather than a single application with one release number.
+
+<Diagram id="module-startup" title="Module verification, negotiation and startup">
+Core launches a verified module. The SDK negotiates the protocol, serves lifecycle RPCs and connects to authenticated host services during Init. Unsupported protocol windows are rejected before the module lifecycle begins.
+</Diagram>
+
+## Module and Host interfaces
+
+A module implements `ID`, `Requires`, `Init`, `Start`, `Stop` and `Health`. `modulesdk.Serve` handles its negotiated startup and lifecycle serving.
+
+The `Host` interface exposes identity, transport, policy, namespaced storage, events, UI brokerage, logging and the module registry. It is deliberately bounded. Configuration and recurring work are optional module-side interfaces, rather than reasons to widen the wire contract.
+
+## Startup and lifecycle
+
+The SDK reads the core-advertised protocol window and refuses an unsupported protocol before initialisation. It opens its lifecycle server, writes one handshake line containing protocol and endpoint information, and then stops using stdout for ordinary output.
+
+Host-service connection is deferred until Init, when core’s host listener is available. The SDK exits on shutdown, loss of core connection, signal or server failure, avoiding a detached module continuing without its supervisor.
+
+Health has a rich module-level status alongside the standard gRPC health service. Operational guidance must identify which surface it is checking.
+
+## Versioning and capability scope
+
+The repository’s SDK, packaging tools and OS capability modules have independent module paths and releases. The SDK’s protocol-generation core pin is separate from whichever core release a device installs. Compatibility follows the negotiated window and tested release combination.
+
+OS-specific capabilities include execution, display, clipboard, power, presence, session, metrics and time. A module’s presence is different from its health and the capabilities it can actually serve in the current session.
+
+Evidence: [Module and Host interfaces](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/modulesdk/module.go), [SDK serve loop](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/modulesdk/serve.go), [protocol generation](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/buf.gen.yaml).

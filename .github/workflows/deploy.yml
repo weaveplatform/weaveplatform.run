@@ -1,0 +1,79 @@
+name: Publish documentation
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: 'Successful main Documentation quality gate run ID (internal owner release)'
+        required: true
+        type: string
+  workflow_run:
+    workflows: [Documentation quality gate]
+    branches: [main]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: docs-production
+  cancel-in-progress: false
+jobs:
+  select:
+    if: vars.DOCS_DEPLOY_ENABLED == 'true' && ((github.event_name == 'workflow_run' && vars.DOCS_AUDIENCE != 'internal' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && vars.DOCS_AUDIENCE == 'internal' && github.ref == 'refs/heads/main' && github.actor == vars.DOCS_RELEASE_OWNER))
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.build.outputs.commit }}
+      run: ${{ steps.build.outputs.run }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOCS_BUILD_RUN: ${{ github.event.workflow_run.id || inputs.build_run }}
+        run: node scripts/select-build.mjs
+  publish:
+    needs: select
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.select.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: documentation-site
+          path: site/build
+          run-id: ${{ needs.select.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Bind deployment to verified build
+        env:
+          DOCS_COMMIT: ${{ needs.select.outputs.commit }}
+          DOCS_RUN: ${{ needs.select.outputs.run }}
+        run: node scripts/deployment-manifest.mjs
+      - name: Deploy production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DOCS_PAGES_PROJECT: ${{ vars.DOCS_PAGES_PROJECT }}
+          DOCS_COMMIT: ${{ needs.select.outputs.commit }}
+        run: npx wrangler pages deploy site/build --project-name "$DOCS_PAGES_PROJECT" --branch main --commit-hash "$DOCS_COMMIT"
+      - name: Verify public deployment or internal Access boundary
+        env:
+          DOCS_CANONICAL_URL: ${{ vars.DOCS_CANONICAL_URL }}
+          DOCS_AUDIENCE: ${{ vars.DOCS_AUDIENCE || 'public' }}
+          DOCS_PAGES_PROJECT: ${{ vars.DOCS_PAGES_PROJECT }}
+          DOCS_COMMIT: ${{ needs.select.outputs.commit }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: node scripts/smoke-deployment.mjs

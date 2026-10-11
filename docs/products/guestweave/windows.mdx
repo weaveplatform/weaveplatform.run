@@ -1,0 +1,44 @@
+---
+title: 'GuestWeave on Windows: HLD'
+description: Windows VM lifecycle, HTTP protection and the current image contract.
+product: guestweave
+audience:
+- consumer
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- guestweave-windows:internal/serve/http.go
+- guestweave-windows:internal/serve/openapi_test.go
+- guestweave-windows:internal/oci/oci.go
+---
+
+GuestWeave on Windows manages local Windows and Linux guests through Windows host-compute facilities. The HTTP handlers adapt the command layer; the runtime implementation and local networking remain host responsibilities.
+
+<Diagram id="guestweave-windows" title="GuestWeave on a Windows host">
+The command layer invokes HCS-backed VM lifecycle operations. HCN provides host networking. Guest execution is a separate boundary from the HTTP entrypoint.
+</Diagram>
+
+## HTTP interface and trust boundary
+
+VM routes are mounted under `/weave/vms`. The inspected server includes start, stop, suspend, guest execution, disk and snapshot operations. Liveness is at `/healthz`; the contract is available at `/openapi.json`.
+
+`ListenAndServe` loads or creates an API token and wraps the handler with bearer-token and host checks. The bare handler constructor does not apply that protection itself. Integrations mounting the handler must preserve the wrappers.
+
+This distinction belongs in infrastructure and embedding guides because inspecting only the router would miss the server’s authentication boundary.
+
+## Images and state
+
+The current Windows OCI implementation names GuestWeave VHDX v2 configuration and compressed disk-layer media types. VM identities are handled as part of the implementation’s image/lifecycle behaviour; do not infer interchangeability with the newer shared Weave raw-chunk contract.
+
+Disk and snapshot operations change persistent host state. Future task guides must identify the VM, expected state, recovery behaviour and cleanup procedure for the selected release.
+
+## Orchestration integration
+
+HostWeave invokes the Windows GuestWeave CLI through its VM runtime adapter. CLI version and output compatibility are separate from the HTTP schema.
+
+## Verification and limitations
+
+The repository includes a router/spec parity test. This HLD follows the inspected code baseline; it does not claim a Windows-host acceptance run. The [compatibility register](../../platform/compatibility.md) records the shared-image-format gap.

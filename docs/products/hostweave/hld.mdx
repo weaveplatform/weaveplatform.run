@@ -1,0 +1,48 @@
+---
+title: 'HostWeave: HLD'
+description: Control-plane interfaces, host agents and the GuestWeave execution boundary.
+product: hostweave
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- hostweave:internal/server/server.go
+- hostweave:agent/runtime/guestweave/guestweave.go
+- hostweave:pkg/images/vm.go
+- hostweave:Dockerfile
+---
+
+HostWeave coordinates work across hosts. Its control plane handles product requests and placement; a host agent executes the assigned work through a runtime adapter. GuestWeave owns VM lifecycle on the local machine.
+
+<Diagram id="hostweave" title="HostWeave orchestration and VM execution">
+An operator calls the control plane. The host agent initiates its connection and receives work leases; the GuestWeave adapter executes subprocess commands against the local VM manager.
+</Diagram>
+
+## Control-plane interface
+
+The server mounts generated OpenAPI handlers on a Chi router. API requests pass through authentication, request limits, observation and operation middleware; authorisation is enforced through the server’s policy layer. Streaming job events, logs and platform changes are registered alongside the generated routes.
+
+Signed-URL blob transfers use a distinct authorised transfer boundary. They bypass JSON request limits and API middleware by design. Deployment and integration guides must distinguish API credentials from signed artifact URLs.
+
+## Host execution
+
+The GuestWeave adapter supports macOS and Windows hosts. It invokes `weave` as a subprocess and interprets VM information and execution results. It supports an optional configured binary checksum; checksum verification is not unconditional in the constructor.
+
+Readiness and guest execution capabilities are checked independently of successful process creation. A working CLI invocation alone does not prove that an assigned guest workload is ready.
+
+## Storage and deployment
+
+The control plane receives configured store, blob and secret implementations. The repository’s Docker build packages the service, CLI and web UI into a non-root runtime image. Its non-loopback API defaults refer to mounted TLS certificate and key files.
+
+Those files are evidence for a deployment guide, not a complete production installation procedure. Certificate lifecycle, durable storage, migrations, backup and recovery require a tested environment-specific guide.
+
+## Image compatibility
+
+The inspected parser recognises GuestWeave VHDX v2, Tart and Lume artifact formats. Do not describe all shared Weave OCI images as admitted by this version. See the [compatibility register](../../platform/compatibility.md).
+
+## Evidence baseline
+
+This HLD is code-inspected at the recorded `main` commit. Private server, runtime adapter, image-parser and Docker evidence is retained in the internal knowledge base. A cross-product acceptance run remains part of the next content milestone.

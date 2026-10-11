@@ -1,0 +1,44 @@
+---
+title: 'Imageweave: HLD'
+description: Reviewed image inputs, Packer construction and qualification boundaries.
+product: imageweave
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- imageweave:pkg/plan/plan.go
+- imageweave:internal/packerplugin/builder.go
+- imageweave:pkg/delivery/native.go
+- imageweave:pkg/delivery/build.go
+---
+
+Imageweave resolves reviewed image scenarios and constructs VM artifacts through Packer. It owns construction and its qualification paths; OCI tooling owns artifact packaging and checks at the handoff.
+
+<Diagram id="imageweave-construction" title="Image construction and artifact verification">
+Pinned inputs resolve to a plan and Packer template. The native path imports manifest-listed outputs, packs the artifact and performs deep inspection. Runtime qualification is a separate requirement.
+</Diagram>
+
+## Inputs and planning
+
+The request names an image family, release, architecture and purpose. Planning validates the relevant input shape, selects the scenario and freezes its template variables. Input hashes and reviewed recipe identity matter independently of filenames.
+
+The resolver branches for native macOS/Windows construction and other scenarios. A resolved plan is a candidate, with qualification explicitly unverified where applicable. Source authentication remains the caller’s responsibility; checking a byte hash alone does not establish who supplied those bytes.
+
+## Native construction
+
+The native Packer plugin implements the builder boundary. Its output manifest identifies the artifacts eligible for import. The construction path invokes Packer initialisation, validation and build, then calls `weaveoci bundle import-imageweave`, packing and strict deep inspection.
+
+The native `Construction` result contains layout, bundle, manifest and recipe information. It deliberately has no acceptance field. OS install or restore completion is different from first-boot, identity and reboot evidence.
+
+## Qualification and publication
+
+Construction, runtime qualification, authenticated admission and channel promotion are distinct stages. The native construction operation does not publish an image or grant promotion permission. Other delivery paths carry their own acceptance outputs; document each path independently.
+
+## Operational constraints
+
+Build hosts need the chosen Packer plugin, media and runtime prerequisites. Temporary workspace, disk space, firmware inputs and signing/publishing credentials belong in scenario-specific guides. A guide must record the exact build recipe and producer/consumer compatibility.
+
+Evidence: [plan resolver](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/pkg/plan/plan.go), [native Packer builder](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/internal/packerplugin/builder.go), [native construction](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/pkg/delivery/native.go). This source baseline does not imply an available tagged Imageweave binary release.
