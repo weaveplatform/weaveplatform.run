@@ -4,6 +4,8 @@ This repository is the canonical source for public Weave documentation and its w
 
 The first release covers the platform HLD and GuestWeave, HostWeave, Imageweave, agent-core and agent-modules. Diagrams use **Archify**. Claims follow inspected code at exact commits; the compatibility register makes incomplete integrations explicit.
 
+Windows GuestWeave's main and development architectures have separate HLDs and source pins. The [PR11 implementation audit](sources/reviews/pr11-code-audit.md) records the corrected product relationships and remaining integration gaps.
+
 ## Local use
 
 Use Node **22.23.3** and npm:

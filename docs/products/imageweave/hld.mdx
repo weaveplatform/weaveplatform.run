@@ -1,6 +1,6 @@
 ---
 title: 'Imageweave: HLD'
-description: Reviewed image inputs, Packer construction and qualification boundaries.
+description: Image planning, native and QEMU construction, agent payloads, runtime acceptance and publication boundaries.
 product: imageweave
 audience:
 - developer
@@ -9,36 +9,136 @@ owner: ShocOne
 status: code-inspected
 verified_at: '2026-10-11'
 evidence:
+- imageweave:internal/cli/root.go
+- imageweave:internal/cli/image.go
+- imageweave:internal/cli/delivery.go
+- imageweave:pkg/catalog/catalog.go
 - imageweave:pkg/plan/plan.go
+- imageweave:pkg/plan/prepared.go
 - imageweave:internal/packerplugin/builder.go
+- imageweave:internal/packerplugin/prepared.go
+- imageweave:pkg/nativebuild/build.go
 - imageweave:pkg/delivery/native.go
 - imageweave:pkg/delivery/build.go
+- imageweave:pkg/macosbuild/build.go
+- imageweave:pkg/macosbuild/tools.go
+- imageweave:internal/imagebuild/catalogue.go
+- imageweave:internal/imagebuild/packages.go
+- imageweave:images/catalogue.json
+- imageweave:images/packages.lock.json
+- imageweave:internal/imagebuild/macos/prepared.go
+- imageweave:internal/imagebuild/macos/acceptance.go
+- imageweave:internal/imagebuild/macos/recipe.go
+- imageweave:internal/imagebuild/macos/machine_darwin.go
+- imageweave:internal/imagebuild/linux/linux.go
+- imageweave:internal/imagebuild/linux/linux_agent_check.go
+- imageweave:internal/imagebuild/windows/windows_agent.go
+- imageweave:internal/imagebuild/windows/recipe.go
+- imageweave:internal/imagebuild/export.go
+- imageweave:.github/workflows/image-native-candidate.yml
+- imageweave:.github/workflows/macos-candidate.yml
+- imageweave:.github/actions/publish-macos-candidate/action.yml
+- imageweave:delivery/macos-candidate-policy.json
+- imageweave:go.mod
 ---
 
-Imageweave resolves reviewed image scenarios and constructs VM artifacts through Packer. It owns construction and its qualification paths; OCI tooling owns artifact packaging and checks at the handoff.
+Imageweave produces and checks VM images. It contains reviewed scenario planning, Packer builders, native and QEMU VM adapters, offline agent-package preparation, derived image builders, runtime acceptance and target disk export. Its macOS candidate workflow can also publish an accepted base image. These are separate entry points with different outputs and acceptance requirements.
 
-<Diagram id="imageweave-construction" title="Image construction and artifact verification">
-Pinned inputs resolve to a plan and Packer template. The native path imports manifest-listed outputs, packs the artifact and performs deep inspection. Runtime qualification is a separate requirement.
+<Diagram id="imageweave-construction" title="Imageweave construction and runtime acceptance">
+A pinned scenario selects construction. Declared disks and platform state become a checked OCI layout; the selected validator supplies separate runtime evidence. Target export and candidate publication have independent entry points, described below. Construction alone does not grant channel promotion.
 </Diagram>
 
-## Inputs and planning
+## Component and process boundaries
 
-The request names an image family, release, architecture and purpose. Planning validates the relevant input shape, selects the scenario and freezes its template variables. Input hashes and reviewed recipe identity matter independently of filenames.
+| Component | Responsibility |
+| --- | --- |
+| `imageweave` CLI | Select scenarios and invoke planning, delivery, image preparation, validation and export operations. |
+| Packer templates and `packer-plugin-imageweave` | Orchestrate native base construction and macOS prepared-image construction; the QEMU template uses the QEMU Packer plugin for Linux bases. |
+| Native platform adapters | Restore macOS through Apple Virtualization.framework; install Windows through Host Compute Service on a matching native host. |
+| `weaveplatform-oci` library and `weaveoci` executable | Bundle import, disk/state contract, packaging, conformance checks, clone validation and publication/admission mechanisms. |
+| Agent package lock and payload preparation | Authenticate and stage selected agent-core and module release installers for a derived image. |
+| Runtime acceptance adapters | Exercise the exact candidate using native macOS or QEMU, recording boot, identity, reboot and profile-specific outcomes. |
 
-The resolver branches for native macOS/Windows construction and other scenarios. A resolved plan is a candidate, with qualification explicitly unverified where applicable. Source authentication remains the caller’s responsibility; checking a byte hash alone does not establish who supplied those bytes.
+Imageweave links OCI libraries and the agent-modules SDK at versions recorded in its own `go.mod`. Delivery also invokes `weaveoci` as a subprocess. The documentation's independent OCI source baseline is not a substitute for the dependency version that a particular Imageweave binary was built with.
 
-## Native construction
+Imageweave's native builders call platform libraries directly. They do not invoke the GuestWeave CLI to create or boot the build VM. Shared native library choices and compatible disk formats establish an implementation relationship, rather than a requirement that GuestWeave be installed to run these builders.
 
-The native Packer plugin implements the builder boundary. Its output manifest identifies the artifacts eligible for import. The construction path invokes Packer initialisation, validation and build, then calls `weaveoci bundle import-imageweave`, packing and strict deep inspection.
+## Planning and input integrity
 
-The native `Construction` result contains layout, bundle, manifest and recipe information. It deliberately has no acceptance field. OS install or restore completion is different from first-boot, identity and reboot evidence.
+`plan` decodes a strict single YAML request, rejects unknown fields and resolves a family/release/architecture through the compiled catalog. Release aliases are frozen into a concrete catalog selection. `Selection.Template` admits only implemented purpose/target combinations: Linux guest bases use QEMU, Windows guest bases use HCS, and macOS ARM64 bases or prepared images use Apple VZ. A listed matrix entry is not automatically an implemented or qualified build scenario.
 
-## Qualification and publication
+Base requests bind the media to a source SHA-256 and build identity. Linux requests also verify local firmware files and require separate SSH key files. Native requests verify local media bytes before building and avoid the Linux firmware/SSH inputs. Prepared macOS requests instead require a pinned parent OCI platform manifest; they reject source media and external SSH keys.
 
-Construction, runtime qualification, authenticated admission and channel promotion are distinct stages. The native construction operation does not publish an image or grant promotion permission. Other delivery paths carry their own acceptance outputs; document each path independently.
+A plan returns `qualification: unverified`. Byte verification establishes integrity against the supplied pin. The caller must establish vendor media authenticity and the reviewed recipe before supplying those inputs. A well-formed source URI or recipe commit string does not, by itself, prove that the running tools came from that source.
 
-## Operational constraints
+## Native base construction
 
-Build hosts need the chosen Packer plugin, media and runtime prerequisites. Temporary workspace, disk space, firmware inputs and signing/publishing credentials belong in scenario-specific guides. A guide must record the exact build recipe and producer/consumer compatibility.
+`delivery-native` resolves the request, creates a new workspace, runs Packer init/validate/build, imports only the manifest-listed outputs with `weaveoci bundle import-imageweave`, packs an OCI layout and performs strict deep inspection. Its `Construction` result carries layout, bundle, manifest and recipe identity with `qualification: unverified`; it has no runtime acceptance field.
 
-Evidence: [plan resolver](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/pkg/plan/plan.go), [native Packer builder](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/internal/packerplugin/builder.go), [native construction](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/pkg/delivery/native.go). This source baseline does not imply an available tagged Imageweave binary release.
+The base builder delegates to `pkg/nativebuild`. macOS requires an Apple Silicon macOS host and verifies the IPSW manifest's version/build. It restores a disk and auxiliary storage, records the Apple hardware model and minimum resources, and leaves the base at Setup Assistant. Windows requires a Windows host matching the requested architecture. It uses a private ISO copy and unattended seed, verifies the installed release/build/edition and generalization receipt, and converts the fixed VHD disk into raw guest sectors for the shared OCI bundle.
+
+Native bases remain sealed. The base Packer communicator rejects guest upload, download and command execution; host-side hooks still run. Normal guest provisioners require a derived-image builder. Native installation or restore completion is therefore distinct from the independent first-boot and reboot evidence required for an accepted image.
+
+## macOS prepared images and the build runner
+
+The macOS prepared builder is a separate Packer builder with a live guest communicator. It deeply verifies a pinned pristine base parent, unpacks a private copy, creates fresh VM identity, completes setup, keeps the VM running through Packer provisioning hooks, configures the intended account and automatic login, reboots, inspects the resulting session, then seals and shuts down the image.
+
+The built-in prepared profile uses the `weave` account, remote login and automatic login. It removes temporary build keys and state during sealing. Prepared images are deliberately different from pristine bases and agent images: the macOS acceptance adapter rejects a candidate containing an agent and checks that the intended profile has no baked agent or build trust key.
+
+`build-macos`, also exposed through `cmd/build-macos`, coordinates this broader workflow. It locks the workspace, resolves and caches selected Apple media, builds tools from a clean recipe checkout, installs the native Packer plugin, constructs the requested base/prepared tiers, checks the OCI outputs and invokes `image validate-macos` for each candidate. It retains a pinned base parent for the prepared tier. Storage planning and preflight checks happen before large downloads or VM disk creation.
+
+This runner can produce local runtime acceptance. It does not itself publish to a registry. Its tool setup derives the default `weaveoci` executable from the Imageweave-pinned Go module; an explicitly supplied executable has a different caller-managed provenance boundary.
+
+## Linux delivery and runtime acceptance
+
+`delivery` is the Linux path for Ubuntu/Fedora base scenarios. It runs the Packer QEMU template, imports its output bundle and invokes `image validate-linux`. That validator packs the exact candidate, performs deep content checks and boots two fresh clones per requested architecture, comparing guest machine identities. Successful delivery returns an acceptance report and `qualification: local-acceptance`, unlike native construction.
+
+The macOS validator also exercises two independent unpacked copies of the exact OCI image. It checks OS/build identity, the validation marker, guest startup, shutdown and persistent identity across reboot. Base setup automation is confined to disposable acceptance copies. The prepared profile additionally checks login, administrator membership, SSH, automatic login, desktop session and completed setup. This native validator uses Imageweave's own Apple VZ adapter.
+
+Agent image validation has additional requirements. `image validate-agent-linux` uses QEMU and the agent SDK/OCI `agentcheck` helpers to check module operations, owned-host trust, foreign-host rejection and reboot persistence. The private test keys remain in the host process. A successful base boot cannot substitute for agent-module or trust evidence, and the presence of validation code is not evidence that any particular image has passed it.
+
+The compiled release catalog and the transitional `images/catalogue.json` serve different command groups. The latter enumerates base, agent and desktop image definitions. Its matrix describes requested outputs; it does not prove that every definition has an executable builder, a complete package lock or qualifying acceptance.
+
+## Agent-core and module inputs
+
+Imageweave's image catalog and package lock pin release assets from `weaveplatform-agent-core` and `weaveplatform-agent-modules`, including platform-specific installers, module binaries, manifests and publisher evidence. `image prepare` verifies that evidence before creating an offline installation payload. Linux and Windows package preparation verify signed checksum bundles; macOS core preparation verifies the Sigstore bundle for its package. Module manifest identity, version, platform digest and size must agree with the lock.
+
+Linux agent construction starts from a pristine base, boots a disposable QEMU copy, installs the staged packages, stops the agent and removes host-specific trust/store and machine identity before producing a derived bundle. Windows agent construction stages the native installers and uses a native HCS preparation path, with Authenticode and installed version/hash checks in its recipe. Both record pinned parent and package lineage. Their construction inventory explicitly leaves module/channel or two-clone native acceptance pending.
+
+A macOS native installer recipe is available through payload preparation, including package signature and Gatekeeper checks. That does not imply an equivalent macOS agent-image construction command: the inspected `image` command tree registers Linux and Windows agent builders, while the macOS Packer prepared tier remains agent-free.
+
+These are agent-core/module release dependencies of Imageweave's derived-image and validation paths. They do not mean that every GuestWeave VM uses the shared agent-core, or that Windows GuestWeave's native `weaveagent` and agent-core's Windows `weave-agent.exe` are the same component.
+
+The checked-in default `images/packages.lock.json` is incomplete for these installation paths at this baseline. None of its module entries contains the signed checksum evidence required by `RequirePackages`; Linux entries also have no module installer. Consequently, the default `image prepare` and agent construction paths reject that lock before downloading or installing packages. A reviewed, complete replacement lock is a prerequisite. This finding concerns the checked-in inputs; it does not assert that the referenced release repositories lack those assets.
+
+## GuestWeave and other export targets
+
+`image export` requires an exact source index digest, guest platform, target and new output directory. It deeply checks the layout, selects the platform and unpacks verified guest sectors before converting storage containers.
+
+| Export target | Disk container |
+| --- | --- |
+| `guestweave-macos` | raw |
+| `guestweave-windows` | VHDX |
+| `aws` | raw |
+| `azure` | fixed VHD |
+| `gcp` | tar.gz |
+| `openstack` | qcow2 |
+| `vsphere` | VMDK |
+
+macOS export is restricted to the Apple host target. Only carried platform state is exported; regenerated VM identity, TPM or firmware state is not carried forward as clone identity. The result records source index/manifest digests and target file hashes with `acceptance: pending`.
+
+These outputs are target disk files, not a registered GuestWeave VM or a universal OCI image admitted by HostWeave. Export does not call a consumer VM CLI, launch a guest, install cloud guest adaptation or establish provider boot acceptance. A consumer-specific import/launch procedure and a producer/consumer format check remain necessary; see the [compatibility register](../../platform/compatibility.md).
+
+## Publication and release-channel boundaries
+
+The general native-construction workflow has read-only repository permissions and preserves diagnostics. It neither publishes nor signs candidates.
+
+The separate `macos-candidate.yml` workflow has an optional publication path. Its selection job is restricted to `main`; publication also requires a public repository and checks for environment reviewers. A dedicated ARM64 macOS runner builds and accepts a base candidate, then the publication job authenticates to GHCR. The composite publication action verifies the schema-3 acceptance report's tag and exact index digest, calls `weaveoci publish`, attaches build provenance and acceptance attestations, and reads back/verifies the published candidate against the reviewed policy.
+
+This workflow publishes macOS **base candidates**. Its reviewed policy contains producer and acceptance identities but no release-channel or trust-anchor configuration. Candidate publication is therefore not release-channel admission or promotion. Agent/module release assets and image candidate artifacts also have different release lifecycles. This HLD describes the workflow implementation; it does not assert that the required runner, environment approval, credentials or a successful published artifact currently exist.
+
+## Failure handling and evidence baseline
+
+Construction entry points require new output directories, hash input bytes and fail on invalid scenario, host mismatch, failed subprocess, missing artifact or conformance errors. The macOS runner can reuse an existing candidate only after content inspection, completed acceptance and recipe/artifact matching; incomplete or corrupt prior output is rejected. Native and derived VM adapters own disposable VM cleanup, and the macOS runner's workspace lock prevents concurrent reuse. An interrupted workspace needs inspection before removing its lock. Runtime validation records unsuccessful outcomes separately from the construction result.
+
+This HLD is based on `3f81345846d7c64bc1b9c5f8f38949a02ca462c5`. No VM construction, two-clone runtime acceptance, registry publication or cross-product workload run was performed for this documentation review. The source lock registers the implementation paths inspected for each mechanism. Runnable guides must bind the exact recipe, media/package pins, tool provenance, host prerequisites, acceptance profile and consumer format before claiming an end-to-end working path.

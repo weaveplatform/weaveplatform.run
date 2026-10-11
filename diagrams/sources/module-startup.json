@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "sequence",
   "meta": {
-    "title": "Capability module startup",
+    "title": "Module startup and local IPC",
     "locale": "en",
     "quality_profile": "showcase",
     "column_fit": "spread",
@@ -31,71 +31,71 @@
   "messages": [
     {
       "from": "core",
+      "to": "services",
+      "y": 170,
+      "label": "After verify: create listener",
+      "variant": "security"
+    },
+    {
+      "from": "core",
       "to": "module",
-      "y": 180,
-      "label": "Launch verified binary",
+      "y": 220,
+      "label": "Launch verified executable",
       "variant": "security"
     },
     {
       "from": "module",
       "to": "core",
-      "y": 230,
-      "label": "Handshake: protocol and address",
+      "y": 270,
+      "label": "Handshake: protocol and endpoint",
       "variant": "return"
     },
     {
       "from": "core",
       "to": "module",
-      "y": 280,
-      "label": "Init with host services and config"
+      "y": 320,
+      "label": "Init: identity, config and capabilities"
     },
     {
       "from": "module",
       "to": "services",
-      "y": 330,
-      "label": "Authenticated host RPC",
+      "y": 370,
+      "label": "Connect with launch token",
       "variant": "security"
     },
     {
       "from": "module",
       "to": "core",
-      "y": 380,
-      "label": "Init completes",
+      "y": 420,
+      "label": "Init result: requirements and surfaces",
       "variant": "return"
     },
     {
       "from": "core",
       "to": "module",
-      "y": 430,
-      "label": "Start"
+      "y": 470,
+      "label": "Check requirements, then Start"
     },
     {
       "from": "core",
       "to": "module",
-      "y": 480,
-      "label": "Health"
-    },
-    {
-      "from": "module",
-      "to": "core",
-      "y": 530,
-      "label": "Module health",
-      "variant": "return"
+      "y": 520,
+      "label": "Poll rich Health; monitor watchdog"
     }
   ],
   "cards": [
     {
       "dot": "rose",
-      "title": "Before lifecycle",
+      "title": "Launch boundary",
       "items": [
-        "Unsupported protocol windows are rejected before module Init."
+        "The host-services listener exists before the child. The SDK connects during Init."
       ]
     },
     {
       "dot": "violet",
-      "title": "SDK ownership",
+      "title": "Readiness",
       "items": [
-        "The SDK serves lifecycle RPCs and brokers the Host interface."
+        "Start and rich health are separate from the standard gRPC server SERVING status."
       ]
     }
   ]

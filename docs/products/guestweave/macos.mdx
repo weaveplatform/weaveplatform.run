@@ -1,6 +1,6 @@
 ---
 title: 'GuestWeave on macOS: HLD'
-description: VM lifecycle, host backend and HTTP boundaries on macOS.
+description: Host processes, native virtualization, guest agent composition, execution paths and image state on macOS.
 product: guestweave
 audience:
 - consumer
@@ -10,39 +10,200 @@ owner: ShocOne
 status: code-inspected
 verified_at: '2026-10-11'
 evidence:
+- guestweave-macos:main.go
+- guestweave-macos:internal/cli/root.go
+- guestweave-macos:internal/cli/serve.go
+- guestweave-macos:internal/cli/stop.go
+- guestweave-macos:internal/serve/serve.go
 - guestweave-macos:internal/httpapi/server.go
+- guestweave-macos:internal/httpapi/vms.go
+- guestweave-macos:internal/httpapi/guest.go
+- guestweave-macos:internal/httpapi/ws.go
 - guestweave-macos:internal/httpapi/router_schema_test.go
+- guestweave-macos:internal/mcp/server_mcp.go
+- guestweave-macos:internal/vm/service/service.go
+- guestweave-macos:internal/vm/run/session.go
+- guestweave-macos:internal/vm/run/windows.go
+- guestweave-macos:internal/vm/run/guestchannel.go
+- guestweave-macos:internal/vm/run/clipboard.go
+- guestweave-macos:internal/vm/run/firstboot.go
+- guestweave-macos:internal/vm/guestctl/socket.go
+- guestweave-macos:internal/vm/guestagent/packages.go
+- guestweave-macos:internal/vm/guestagent/windows.go
+- guestweave-macos:internal/vm/guestagent/install.go
+- guestweave-macos:internal/vm/guestagent/resident.go
+- guestweave-macos:internal/vm/channelkey/channelkey.go
+- guestweave-macos:internal/vm/layout/layout.go
+- guestweave-macos:internal/hypervisor/hypervisor.go
+- guestweave-macos:internal/hypervisor/bootfirmware.go
+- guestweave-macos:internal/hypervisor/netbackend.go
+- guestweave-macos:internal/hypervisor/hardware/net/softnet.go
+- guestweave-macos:internal/network/network_shared.go
+- guestweave-macos:internal/config/config.go
+- guestweave-macos:internal/command/commands_exec.go
+- guestweave-macos:internal/command/commands_stop.go
+- guestweave-macos:internal/command/commands_shutdown.go
+- guestweave-macos:internal/command/commands_restart.go
+- guestweave-macos:internal/command/commands_clone.go
+- guestweave-macos:internal/command/commands_push.go
+- guestweave-macos:internal/imagesource/oci/registry.go
+- guestweave-macos:internal/imagesource/oci/base.go
+- guestweave-macos:internal/imagesource/oci/push.go
+- guestweave-macos:internal/imagesource/oci/profile.go
 - guestweave-macos:go.mod
+- guestweave-macos:internal/ssh/sshclient.go
+- hostweave:agent/runtime/guestweave/guestweave.go
 ---
 
-GuestWeave on macOS brings CLI and HTTP operations into a shared command and VM service layer. The HTTP API is an adapter over those operations. MCP is a separate server surface, so it must receive its own reference and authentication review.
+GuestWeave's macOS implementation manages VMs on a local macOS host and supplies the host half of guest integration. Its runtime combines a host CLI/server, native virtualization code, a host SDK client, and guest-installed `weave-agent` core plus OS-specific capability modules. Those guest components implement execution, clipboard, presence and power operations inside the VM; they are part of the working GuestWeave stack. A VM can boot without them, but its agent-backed features cannot work until they are installed, answering and authenticated.
 
-<Diagram id="guestweave-macos" title="GuestWeave on a macOS host">
-Requests enter through a product interface, reach shared lifecycle operations and invoke the host backend. VM files retain the local state needed by later operations.
+This HLD describes implementation at commit `f77fdaafd218cfa55b12dc1d4e814d4e2d874e46`. Installed agent releases and Go dependencies have their own pins; they do not automatically follow the corresponding repositories' `main` branches.
+
+<Diagram id="guestweave-macos" title="GuestWeave on macOS: host runtime and guest components">
+Lifecycle requests create or address a per-VM host run process. That process owns the virtualization instance and the sole SDK connection to guest-resident agent core, which routes capability operations to modules. HTTP and MCP execution currently use a separate SSH path, described below.
 </Diagram>
 
-## Components and boundaries
+## Deployment and component ownership
 
-| Component | Responsibility |
-| --- | --- |
-| CLI and HTTP adapters | Parse product requests and return operation results |
-| Command layer | Share lifecycle behaviour between entrypoints |
-| VM service | Coordinate VM configuration and local state |
-| Host backend | Invoke macOS virtualization facilities |
-| VM files | Persist disks, configuration and VM state |
+The executable uses the `weave` command vocabulary. `main.go` locks the main OS thread before CLI dispatch because AppKit and Virtualization.framework require it. Each running VM has a separate `weave run` process. HTTP and MCP start runs by spawning the same executable in a new session; VM lifetime therefore outlasts the initiating request and server. `weave serve` runs the optional HTTP server; `weave serve --mcp` instead selects the stdio MCP server. The two are alternative modes, and the MCP flag does not add an HTTP MCP endpoint. [Process spawning][process], [server mode dispatch][serve].
 
-Backend selection is host-architecture and guest-OS dependent. The presence of a code path does not certify every possible guest combination.
+| Location | Component | What it owns |
+| --- | --- | --- |
+| Host | CLI, HTTP API and MCP adapter | Request parsing, selected command calls, listings and distinct execution adapters |
+| Host | `internal/command` and `internal/vm/service` | Local VM operations, configuration, inventory and detached-run helpers |
+| Host, one process per VM | `internal/vm/run.Session` | Live virtualization instance, VM lock, display, guest-control socket and agent connection |
+| Host | Virtualization.framework path and native Hypervisor.framework VMM | Guest CPU/memory/device lifecycle; the implementation differs by guest OS |
+| Host | Agent-modules SDK `weaveclient` and `weavewire` | Multiplex guest operations through one framed channel, authenticate the host and query module availability |
+| Guest | Agent-core release, installed as `weave-agent` | Receive the guest channel, authenticate requests and route them to supervised modules |
+| Guest | OS-specific agent-module releases | Perform guest OS operations such as exec, power, clipboard and presence |
+| Host | Shared OCI library through `internal/imagesource/oci` | Fetch, verify, cache, unpack and publish VM image artifacts |
+| Host filesystem | VM directories and caches | Persistent configuration, disks, firmware state, identity, trust and source lineage |
 
-## HTTP interface
+HostWeave can invoke this host CLI from its own host agent. That host orchestration agent and the VM's guest-resident `weave-agent` have different owners and lifecycles. GuestWeave itself operates locally without HostWeave. Image construction and registry publication are separate from a live VM's agent connection. [HostWeave runtime adapter][hostweave].
 
-The inspected server binds to `127.0.0.1` and mounts product routes under `/weave`. VM operations include creation, `run`, stop, shutdown, restart, snapshots and guest execution. Its specification is served at `/weave/openapi.yaml`.
+## Two virtualization implementations
 
-This loopback boundary is material to deployment guidance. Any future remote exposure guide must establish authentication, transport protection and origin handling for that specific setup.
+The dispatch in `Session.runMainThread` chooses by the VM configuration's guest OS. It is not a generic backend selector that sends every operation through one framework. [Engine dispatch][engines].
 
-## Orchestration integration
+| Guest OS on the macOS host | Implementation | Important boundary |
+| --- | --- | --- |
+| macOS | Apple's Virtualization.framework through Go platform bindings and `internal/vm` | macOS hardware-model/identity and auxiliary storage belong to this path |
+| Linux | Virtualization.framework through the same VM implementation | EFI state, virtual devices and optional first-boot cloud-init seed |
+| Windows on ARM | GuestWeave's `internal/hypervisor` VMM over Hypervisor.framework | GuestWeave implements the hosted VMM, firmware/device model and lifecycle itself |
 
-HostWeave’s GuestWeave runtime adapter calls the local CLI. Keep binary version, arguments, output parsing and readiness behaviour in the integration contract. The local HTTP API is a separate integration surface.
+The Windows VMM owns guest address space, vCPU loops/traps, interrupts and timers, UEFI firmware, storage and virtual devices. It uses an embedded TPM responder through `go-sdk-vtpm2`; Windows runs in process, with native framebuffer/input integration. Its current path does not launch QEMU or use a VNC server. Legacy QEMU-named layout helpers and comments remain in the source and do not establish a live QEMU runtime dependency. macOS/Linux runs use the VZ/AppKit path, with display and VNC options governed by their own code. [Native VMM implementation][vmm].
 
-## Verification and limitations
+Host OS/framework availability, guest architecture, firmware and device configuration still constrain execution. For example, CLI exec is gated on macOS 14 or later and the native VMM is ARM64. Repository paths are evidence of implementation, not a certificate that every media/device combination boots successfully.
 
-The repository includes a router/spec test that compares served HTTP methods and paths with OpenAPI operations. This HLD is code-inspected at the recorded `main` baseline; macOS VM acceptance was not exercised for this documentation release. API reference must also verify request and response semantics, beyond route parity.
+Network attachments also differ by engine. VZ NAT uses the framework's NAT attachment; the native VMM's default NAT uses a Go user-mode network backend. Bridged/vmnet modes depend on their host permissions, while softnet launches an optional external helper over a Unix datagram socket pair. On the native VMM, an unavailable network backend becomes a logged null peer while the NIC and VM remain present. A successful boot therefore does not prove guest network reachability, and SSH-based API operations can fail while agent-channel operations remain available. [VZ NAT][vz-network], [native network selection and fallback][hv-network], [softnet subprocess][softnet].
+
+## Request paths and readiness
+
+The adapters share some VM operations, but their guest-execution and stop semantics have diverged. Integrators must select a surface deliberately.
+
+| Operation | Actual path at this revision | Prerequisites / result meaning |
+| --- | --- | --- |
+| HTTP or MCP start | Adapter → `SpawnDetachedRun` → child `weave run` → engine | Adapter waits for the VM's PID-lock based running state, not guest-agent or application readiness |
+| CLI `weave exec` | CLI → host `guest.sock` → run-owned SDK client → guest core → exec module | Requires a running VM, answering authenticated agent and exec module; no guest IP/SSH dependency |
+| HTTP `/weave/vms/{name}/exec` | Resolve guest IP → SSH → guest command | Uses default `weave` credentials and joins command arguments into a shell command |
+| HTTP exec/SSH WebSocket | Resolve guest IP → WebSocket bridge → guest SSH session | Requires guest networking and SSH; this does not bridge the agent channel |
+| MCP `weave_exec` | Resolve guest IP → GuestWeave SSH client → guest command | Defaults to `weave` credentials; caller may supply credentials and timeout |
+| CLI stop | Host guest-control socket → agent power request → platform power request → forced stop after grace | CLI defaults to graceful first; `--force` skips the asking steps |
+| HTTP or MCP stop | Adapter → `StopCommand` with `Graceful` left false | Hard stop; it is not the CLI's default graceful-stop policy |
+| Shutdown | Onboarding-specific guest path when available, otherwise guest-control shutdown request | Never forces; a non-cooperating guest remains running and the command reports failure |
+| Restart | Guest-control request → guest/platform reboot ladder → backend restart | Keeps the run process and its sockets alive; forced restart is separately reported |
+
+The detached-run helper returns once the child starts. HTTP then polls for up to 30 seconds. `Running()` reads the VM's PID lock, so a successful response says the host run process has acquired the VM, not that the guest OS has finished booting or that any module is ready. [Run/readiness][readiness], [CLI execution][exec], [HTTP execution][http-exec], [MCP execution][mcp-exec], [stop policy][stop].
+
+The REST server binds to `127.0.0.1`, defaults to port `7777`, and mounts routes under `/weave`; `/weave/openapi.yaml` serves the embedded specification. Its router installs recovery and request logging, without an API authentication middleware. The agent channel's authentication does not secure this HTTP surface. MCP uses stdio. Remote publication of the local REST service would require a separate exposure design. [HTTP router][http], [MCP transport][mcp-transport].
+
+GuestWeave's SSH wrapper defaults a missing host-key callback to `ssh.InsecureIgnoreHostKey`; MCP constructs that wrapper without a pinned callback. Guest credentials therefore do not establish SSH server identity on this path, and authenticated guest-channel trust does not extend to it. A guide using SSH needs an explicit server-identity verification procedure.
+
+## Guest-agent transport and provisioning
+
+Each run owns exactly one SDK client for the VM's guest channel. CLI control requests arrive through the host Unix `guest.sock`; they do not open competing readers on the framed guest transport. On the Virtualization.framework path, two host pipes back a dedicated named console port. On the native Windows VMM path, `AgentLinker.AgentLink()` supplies the reboot-stable host connection. This channel is created independently of clipboard policy. [Channel ownership][channel], [VZ attachment][attachment].
+
+The run probes until agent core answers, then authenticates with the VM's Ed25519 private key. It retains the client across guest reboots and repeats authentication as required. The module registry exposes installed/running capability state; it is not a universal preflight gate. Exec sends its request directly, while clipboard consults registry state. Core being present does not imply that exec, power or clipboard modules are usable.
+
+Guest components enter the VM through different provisioning paths:
+
+| Guest OS | Agent delivery | Channel-key provisioning |
+| --- | --- | --- |
+| macOS | Core `.pkg` first, then `weave-macos-*` module packages during onboarding or a later SSH installation | Read-only `WEAVEPROV` volume exposes the public key for core to consume |
+| Linux | Agent core/modules supplied by the image or the operator's first-boot provisioning | NoCloud seed writes the public key and restarts core; the generated key seed alone does not install the agent |
+| Windows on the macOS host | Core Windows ZIP plus `weave-windows-*` module ZIPs injected into install media; code also supports later SSH installation/upgrade | `WEAVEPROV` optical media after installation |
+
+The macOS default core package is **0.9.8** and its eight default module packages cover clipboard, display, exec, metrics, power, presence, session and time. The Windows-on-mac core ZIP is **0.9.11**, with eight Windows module ZIPs for those capabilities. The host Go module separately pins the agent-modules SDK to **0.2.7**. These are three different dependency choices. Released package bytes are checked against their configured digests; local package overrides use separate paths. Statements in comments about historical signature/notarization checks are not a fresh verification of those release assets. [macOS package pins][mac-packages], [Windows package pins][windows-packages], [host dependencies][dependencies].
+
+| Guest payload | Clipboard | Display | Exec, metrics, power, presence, session and time |
+| --- | --- | --- | --- |
+| macOS modules | `0.2.5` | `0.2.1` | `0.2.1` each |
+| Windows-on-mac modules | `0.2.6` | `0.2.3` | `0.2.2` each |
+
+Windows install media supplies the core's channel mode as `WEAVE_CHANNEL=virtio-serial`, because this native VMM is not a Hyper-V guest. The bundle installer records installation failures but exits zero so a guest-agent failure does not abort Windows Setup. Windows completing Setup is therefore separate from core/modules being installed successfully. [Windows bundle installer][windows-installer].
+
+First boot provisions trust out of band: `channel.key` stays on the host with mode `0600`; `channel.pub` goes into the guest. Provisioning media remains attached on subsequent runs until the guest accepts its key and the host records that acceptance. A guest with no agent or cloud-init can simply ignore its provisioning disk. [First boot][firstboot], [per-VM keys][keys].
+
+## Persistent state, images and cloning
+
+Storage resolves from explicit `storage.home` / `GUESTWEAVE_STORAGE_HOME`, then a configured default location, then `~/.weave`. Each VM has its own directory; image content and unpacked bases are caches, not the live VM's mutable disks. [Storage root][storage].
+
+| State | Files / mechanism | Consequence |
+| --- | --- | --- |
+| VM configuration and system disk | `config.json`, `disk.img` | Survive host commands and run-process exit |
+| Running ownership | PID lock associated with `config.json` | Prevents concurrent ownership; used by listings/readiness polling |
+| VZ firmware and suspend | `nvram.bin`, `state.vzvmsave` | Framework-specific state |
+| Native Windows VMM firmware and suspend | `NVRAM.dat`, `state.wsar`, TPM state | Different formats; VZ and native suspend images cannot be exchanged |
+| Host control surfaces | `guest.sock`, plus display/control/clipboard sockets as implemented | Live sockets belong to the run process |
+| Trust and provenance | `channel.key`, `channel.pub`, trust records, `agent-core-version`, `lineage.json` | Distinguish channel identity, installed core and clone origin |
+
+A suspended VM is detected from its backend-specific image after checking running ownership. Resume consumes that image only after successful restoration. Stop on an already suspended VM discards the saved state; shutdown rejects it because there is no running guest to ask. [VM layout and state][layout], [stop and shutdown][stop].
+
+The OCI adapter uses the shared Weave guest-artifact contract. Pull selects the guest platform, applies the registry profile's verification mode, caches content, unpacks a base and constructs GuestWeave's local config/state. The default is not universally signed-image enforcement: profiles without an explicit verification block or channel use `none` and warn. A profile can require `channel`, `signature` or `both`. Clones are independent APFS copies and do not need a cache pin for their lifetime. [OCI pull/cache][oci], [verification policy][policy].
+
+Push constructs a bundle from a stopped VM, requires a raw system disk, uses the shared publishing library and can emit promotion metadata. It does not publish the VM's MAC or machine identifier. Image consumption constructs fresh local identity; local cloning also checks channel trust. A provisioned local VM normally must be sealed before it is used as a template, because copying its trusted disk would make both guests accept the source key. `--share-channel-key` is an explicit exception. Do not treat a disk clone as a complete isolation boundary. [OCI publishing][push], [clone trust checks][clone].
+
+The push implementation copies the raw guest disk without checking the channel-trust record or scrubbing its guest filesystem. It therefore does not prove that a provisioned guest's trusted public key has been removed. Fresh host-side identity on pull cannot repair a disk that still trusts the source VM's key. Sealing and first-boot trust acceptance need their own image qualification before an artifact is treated as a reusable template.
+
+## Failure and trust boundaries
+
+Missing agent core does not prevent ordinary VM boot. The run continues probing, while CLI execution reports that no agent is answering. A failed authentication keeps the VM alive but refuses authenticated guest operations; provisioning, rather than the hypervisor, is then the boundary to repair. Missing/non-running modules are separate failures. A host `guest.sock` bind failure also leaves the run alive and makes its control verbs unavailable. The socket checks peer credentials and allows root or the user running the VM; REST loopback access follows different rules. [Channel failure behavior][channel], [local IPC authorization][ipc].
+
+A graceful request being accepted is not proof the guest has powered off. Stop waits for the guest and run lock to be released, with a kill backstop if the host process stalls. Shutdown reports a timeout rather than converting it into a power cut. The HTTP/MCP stop adapters bypass the graceful ladder at this revision. Those distinctions matter to filesystem consistency and automation that starts another run immediately after stopping one.
+
+## Verification limits
+
+The source baseline was inspected across host dispatch, handlers, guest transport, package delivery, state and OCI integration. The router/spec test checks method/path parity; it does not establish semantic parity between CLI, REST and MCP. No VM was booted, no package release signature was independently checked, and no hypervisor/guest-module acceptance was run during this documentation audit.
+
+Acceptance should separately exercise each supported guest OS/backend, authenticated CLI exec with guest networking disabled, REST/MCP SSH execution with changed credentials, missing modules, first-boot key acceptance and rejection, graceful versus forced stop, both suspend formats, and OCI verification/clone identity. A successful route test or static diagram cannot stand in for those results.
+
+[process]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/service/service.go#L227-L269
+[serve]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/serve/serve.go#L23-L28
+[hostweave]: https://github.com/weaveplatform/hostweave/blob/5080abf8d1a51232246b178d4be34dc9db21e4a0/agent/runtime/guestweave/guestweave.go
+[engines]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/run/session.go#L521-L545
+[vmm]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/hypervisor/hypervisor.go#L3-L18
+[vz-network]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/network/network_shared.go#L1-L15
+[hv-network]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/hypervisor/netbackend.go#L46-L121
+[softnet]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/hypervisor/hardware/net/softnet.go#L78-L143
+[readiness]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/httpapi/vms.go#L169-L184
+[exec]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/command/commands_exec.go#L30-L59
+[http-exec]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/httpapi/guest.go#L25-L74
+[mcp-exec]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/mcp/server_mcp.go#L283-L322
+[stop]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/command/commands_stop.go#L19-L36
+[http]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/httpapi/server.go#L36-L154
+[mcp-transport]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/mcp/server_mcp.go#L374-L378
+[channel]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/run/guestchannel.go#L95-L180
+[attachment]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/run/clipboard.go#L101-L143
+[mac-packages]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/guestagent/packages.go#L23-L100
+[windows-packages]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/guestagent/windows.go#L27-L91
+[windows-installer]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/guestagent/windows.go#L309-L376
+[dependencies]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/go.mod#L1-L28
+[firstboot]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/run/firstboot.go#L3-L21
+[keys]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/channelkey/channelkey.go#L1-L77
+[storage]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/config/config.go#L27-L68
+[layout]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/layout/layout.go#L48-L207
+[oci]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/imagesource/oci/registry.go#L107-L147
+[policy]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/imagesource/oci/profile.go#L119-L159
+[push]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/imagesource/oci/push.go#L27-L134
+[clone]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/command/commands_clone.go#L222-L265
+[ipc]: https://github.com/weaveplatform/guestweave-cli-macos/blob/f77fdaafd218cfa55b12dc1d4e814d4e2d874e46/internal/vm/guestctl/socket.go#L123-L149

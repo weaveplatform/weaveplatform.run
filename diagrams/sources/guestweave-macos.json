@@ -2,23 +2,23 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "GuestWeave on a macOS host",
+    "title": "GuestWeave on macOS: host runtime and guest components",
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [
-      1240,
-      720
+      1350,
+      760
     ]
   },
   "components": [
     {
-      "id": "client",
+      "id": "interfaces",
       "type": "external",
-      "label": "User or integration",
-      "sublabel": "CLI, HTTP or MCP",
+      "label": "CLI + lifecycle APIs",
+      "sublabel": "HTTP loopback / MCP stdio",
       "pos": [
         40,
-        150
+        235
       ],
       "size": [
         220,
@@ -26,98 +26,193 @@
       ]
     },
     {
-      "id": "commands",
+      "id": "operations",
       "type": "backend",
-      "label": "Command layer",
-      "sublabel": "Shared lifecycle operations",
+      "label": "Local operations",
+      "sublabel": "Commands + VM service helpers",
       "pos": [
         350,
-        150
+        235
       ],
       "size": [
-        220,
+        230,
         84
       ]
     },
     {
-      "id": "vmservice",
+      "id": "run",
       "type": "backend",
-      "label": "VM service",
-      "sublabel": "Configuration and state",
+      "label": "Per-VM run process",
+      "sublabel": "guest.sock + SDK weaveclient",
       "pos": [
-        660,
-        150
+        650,
+        235
       ],
       "size": [
-        220,
+        230,
         84
       ]
     },
     {
-      "id": "backend",
+      "id": "core",
       "type": "backend",
-      "label": "Host backend",
-      "sublabel": "Apple virtualization APIs",
+      "label": "weave-agent core",
+      "sublabel": "Guest daemon / authenticated router",
       "pos": [
-        970,
-        150
+        1010,
+        235
       ],
       "size": [
-        220,
+        280,
         84
       ]
     },
     {
-      "id": "storage",
+      "id": "modules",
+      "type": "backend",
+      "label": "OS capability modules",
+      "sublabel": "exec, power, presence, clipboard",
+      "pos": [
+        1010,
+        440
+      ],
+      "size": [
+        280,
+        84
+      ]
+    },
+    {
+      "id": "guestOS",
+      "type": "external",
+      "label": "Guest operating system",
+      "sublabel": "macOS, Linux or Windows",
+      "pos": [
+        1010,
+        645
+      ],
+      "size": [
+        280,
+        84
+      ]
+    },
+    {
+      "id": "engines",
+      "type": "backend",
+      "label": "Virtualization engines",
+      "sublabel": "VZ: macOS/Linux; HV: Windows",
+      "pos": [
+        650,
+        645
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "state",
       "type": "database",
-      "label": "VM files",
-      "sublabel": "Disks and identity state",
+      "label": "Local VM state",
+      "sublabel": "Disk, config, identity + channel key",
       "pos": [
-        660,
-        410
+        650,
+        30
       ],
       "size": [
-        220,
+        230,
+        84
+      ]
+    },
+    {
+      "id": "images",
+      "type": "cloud",
+      "label": "OCI image adapter",
+      "sublabel": "Shared OCI library + base cache",
+      "pos": [
+        350,
+        30
+      ],
+      "size": [
+        230,
         84
       ]
     }
   ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Guest VM",
+      "wraps": [
+        "core",
+        "modules",
+        "guestOS"
+      ],
+      "pad": 18
+    }
+  ],
   "connections": [
     {
-      "to": "commands",
-      "label": "Invoke",
-      "from": "client"
+      "from": "interfaces",
+      "to": "operations",
+      "label": "Lifecycle"
     },
     {
-      "to": "vmservice",
-      "label": "Lifecycle",
-      "from": "commands"
+      "from": "operations",
+      "to": "run",
+      "label": "Spawn / IPC"
     },
     {
-      "to": "backend",
-      "label": "Native VM calls",
-      "from": "vmservice"
+      "from": "run",
+      "to": "core",
+      "label": "Agent channel"
     },
     {
-      "to": "storage",
-      "label": "Persist",
-      "from": "vmservice",
+      "from": "core",
+      "to": "modules",
+      "label": "Route operations",
       "labelDy": 24
+    },
+    {
+      "from": "modules",
+      "to": "guestOS",
+      "label": "OS capabilities",
+      "labelDy": 24
+    },
+    {
+      "from": "run",
+      "to": "engines",
+      "label": "In-process VM",
+      "labelDy": 24
+    },
+    {
+      "from": "engines",
+      "to": "guestOS",
+      "label": "Boot guest"
+    },
+    {
+      "from": "run",
+      "to": "state",
+      "label": "VM files + key"
+    },
+    {
+      "from": "operations",
+      "to": "images",
+      "label": "Pull / push"
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Host responsibility",
+      "title": "Product composition",
       "items": [
-        "GuestWeave owns local VM state and lifecycle."
+        "GuestWeave hosts the VM and the SDK client. Agent core and modules run inside the guest."
       ]
     },
     {
       "dot": "amber",
-      "title": "Guest matrix",
+      "title": "Entry-point difference",
       "items": [
-        "Host architecture and guest OS constrain backend selection."
+        "CLI exec uses the agent channel. HTTP and MCP exec still connect to the guest over SSH."
       ]
     }
   ]

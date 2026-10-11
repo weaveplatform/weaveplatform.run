@@ -1,6 +1,6 @@
 ---
 title: 'GuestWeave on Windows: HLD'
-description: Windows VM lifecycle, HTTP protection and the current image contract.
+description: Host-side HCS VM management, bundled guest agents, transport boundaries and persistent image state.
 product: guestweave
 audience:
 - consumer
@@ -10,35 +10,128 @@ owner: ShocOne
 status: code-inspected
 verified_at: '2026-10-11'
 evidence:
+- guestweave-windows:go.mod
+- guestweave-windows:internal/cli/root.go
+- hostweave:agent/runtime/guestweave/capabilities.go
+- hostweave:agent/runtime/guestweave/guestweave.go
+- guestweave-windows:internal/command/command.go
+- guestweave-windows:internal/command/commands_create.go
+- guestweave-windows:internal/command/commands_run.go
+- guestweave-windows:internal/command/commands_exec.go
+- guestweave-windows:internal/command/commands_agent.go
+- guestweave-windows:internal/command/commands_oci.go
+- guestweave-windows:internal/command/run_clipboard.go
+- guestweave-windows:internal/hcs/engine.go
+- guestweave-windows:internal/hcs/native.go
+- guestweave-windows:internal/hcs/bridge.go
+- guestweave-windows:internal/hcs/netmodes.go
+- guestweave-windows:internal/hcs/snapshot.go
+- guestweave-windows:internal/vm/config/config.go
+- guestweave-windows:internal/vm/layout/layout.go
+- guestweave-windows:internal/guestweaveagent/client/client.go
+- guestweave-windows:internal/guestweaveagent/client/install.go
+- guestweave-windows:internal/guestweaveagent/proto/proto.go
+- guestweave-windows:internal/guestweaveagent/agent/agent.go
+- guestweave-windows:cmd/weaveagent/main.go
+- guestweave-windows:cmd/weaveagent/modulebus.go
+- guestweave-windows:cmd/weaveguestd/main.go
+- guestweave-windows:cmd/weave-gui/main.go
+- guestweave-windows:internal/nativebuild/nativebuild.go
+- guestweave-windows:internal/nativebuild/assets/weave-agent
+- guestweave-windows:internal/guestimage/manifest.go
+- guestweave-windows:internal/cli/serve.go
 - guestweave-windows:internal/serve/http.go
+- guestweave-windows:internal/serve/auth.go
+- guestweave-windows:internal/serve/mcp.go
+- guestweave-windows:internal/serve/vmcreate.go
 - guestweave-windows:internal/serve/openapi_test.go
 - guestweave-windows:internal/oci/oci.go
 ---
 
-GuestWeave on Windows manages local Windows and Linux guests through Windows host-compute facilities. The HTTP handlers adapt the command layer; the runtime implementation and local networking remain host responsibilities.
+GuestWeave on Windows is the Windows host implementation of local VM management. The host executable owns VM configuration, disks, image transfers, network setup and lifecycle supervision. It also carries its own guest-agent implementation for selected guest capabilities. Those host and guest responsibilities cross an operating-system boundary even though their source is in the same repository.
+
+This HLD describes commit `48fe4242d4d8b884e1bc464287f9a6c8f72ca275`. The Windows implementation currently uses repository-local guest agents and a framed JSON module bus. Its guest bus and local Go feature modules have a different implementation and wire contract from the separately versioned [agent-core](../agent-core/hld.mdx) and [agent-modules](../agent-modules/hld.mdx) projects.
+
+The [development-branch HLD](windows-development.mdx) separately describes `feat/weave-agent-handover-168` at `651ec7d5d0459ece11526c5ee34e0774bc6d2f52`. That branch replaces the legacy guest agents with the SDK/core/module architecture. The design below remains the current `main` baseline; its legacy agent and embedded-payload findings do not describe the migrated branch.
 
 <Diagram id="guestweave-windows" title="GuestWeave on a Windows host">
-The command layer invokes HCS-backed VM lifecycle operations. HCN provides host networking. Guest execution is a separate boundary from the HTTP entrypoint.
+GuestWeave commands drive HCS compute systems and maintain local state. Native Linux execution reaches the bundled guest agent through a host bus client over HvSocket. The guest boundary contains the local agent implementation, while the OCI registry and initiating clients sit outside the host implementation.
 </Diagram>
 
-## HTTP interface and trust boundary
+## Responsibility and process boundaries
 
-VM routes are mounted under `/weave/vms`. The inspected server includes start, stop, suspend, guest execution, disk and snapshot operations. Liveness is at `/healthz`; the contract is available at `/openapi.json`.
+| Component | Responsibility | Implementation boundary |
+| --- | --- | --- |
+| CLI, WinUI desktop application, HTTP server and MCP stdio server | Adapt user input to command structs and return results. Their exposed operation sets differ. | Host processes; `internal/cli`, `cmd/weave-gui`, `internal/serve`. |
+| Command/session layer | Open the per-user VM store, validate VM state, select HCS, and coordinate lifecycle, images and guest tools. | `internal/command`; `openSession` constructs the HCS engine. |
+| HCS engine | Create/start compute systems, supervise exits, stop/suspend/resume and construct compute-system documents. | `internal/hcs`; Windows host APIs. |
+| Networking | Build HCN/HNS networks and endpoints; use virtual-switch WMI where a mode requires it. Address native private NICs through the guest bus. | Host network state, separate from the VM's guest configuration. |
+| Native Linux `weave-agent` | Act as init when PID 1, mount essential filesystems and host shares, configure networking, and serve exec/PTY, shutdown and clipboard modules. | `cmd/weaveagent`, inside the Linux guest. |
+| Windows `weave-guestd` | Serve the clipboard module in the logged-in user's interactive session. | `cmd/weaveguestd`, inside the Windows guest. |
+| VM store and OCI cache | Persist configuration, VHDX chains, firmware/memory state and cached registry images. | Host filesystem; cache-backed VMs may depend on a cached parent disk. |
 
-`ListenAndServe` loads or creates an API token and wraps the handler with bearer-token and host checks. The bare handler constructor does not apply that protection itself. Integrations mounting the handler must preserve the wrappers.
+The command layer selects HCS exclusively. A stored VM that names the retired `hyperv` backend is reported as `unmanaged` and refused for lifecycle control; a missing backend field identifies that legacy configuration. References to two engines in older interface comments do not establish a second executable backend at this commit. The `HyperV` field name also persists in the configuration schema: for an HCS VM its `VMID` carries the GuestWeave VM name, from which the compute-system ID `weave-<name>` is derived.
 
-This distinction belongs in infrastructure and embedding guides because inspecting only the router would miss the server’s authentication boundary.
+## Guest creation and boot paths
 
-## Images and state
+Guest creation supports installer-backed Windows/Linux disks and weave-native Linux guests. The create command normalizes a plain `--linux` request with no installation media into a native guest. Windows and unattended Linux installation paths prepare installation media and answer-file volumes; the run supervisor watches an installation through shutdown and finalization.
 
-The current Windows OCI implementation names GuestWeave VHDX v2 configuration and compressed disk-layer media types. VM identities are handled as part of the implementation’s image/lifecycle behaviour; do not infer interchangeability with the newer shared Weave raw-chunk contract.
+The native path uses HCS `LinuxKernelDirect`. Its image directory contains `kernel`, `initrd.img` and `manifest.json`. An initrd-only utility guest runs the bundled agent as `/init`; a rootfs guest attaches a VHDX and boots with `root=/dev/sda` and `init=/sbin/weave-agent`. Without a supplied image, `internal/nativebuild` uses an embedded agent and builder scripts to build/cache the kernel, base distro rootfs and image through a WSL Linux builder. This is a concrete image-construction path in the Windows repository; an automatic call to Imageweave is not present in it.
 
-Disk and snapshot operations change persistent host state. Future task guides must identify the VM, expected state, recovery behaviour and cleanup procedure for the selected release.
+Ordinary disk guests follow the UEFI compute-system document path. Windows requires persistent `guest.vmgs` firmware state so the installed boot entry survives. If the file cannot be created, start returns an error that identifies the elevation prerequisite. The native Linux path constructs its own document and guest-agent bridge instead of depending on a guest IP address for execution.
 
-## Orchestration integration
+## Lifecycle and durable state
 
-HostWeave invokes the Windows GuestWeave CLI through its VM runtime adapter. CLI version and output compatibility are separate from the HTTP schema.
+Creation writes the VM directory and configuration; an HCS compute system is created when the VM starts. Provisioning does not create a persistent VMMS-managed VM. A supervised run holds the VM mutation lock and compute-system handle. A detached run allows the compute system to outlive the initiating process, but operations requiring a live host supervisor have different behavior: standing port forwards, for example, are refused with detached start and require a separate forwarding process.
 
-## Verification and limitations
+| State artifact | Meaning |
+| --- | --- |
+| `config.json` | GuestWeave VM shape, backend identity, NICs, disks, shares and guest installation/native-boot metadata. |
+| `disk.vhdx` and snapshot `.avhdx` layers | Boot disk and differencing chain; the active leaf determines clone/export contents. |
+| `guest.vmgs` | UEFI firmware state and, where configured, guest vTPM state. |
+| `suspend.vmrs` | Saved memory image. Its presence marks an inactive compute system as suspended; start recreates the system with that image. |
+| `snapshots/index.json` | GuestWeave-owned snapshot names, parent relationships and current snapshot. |
+| `oci-source.json` | Source image identity and whether the VM disk depends on a cached image. |
+| `.lock`, `serial.log`, `clipboard-control.sock` | Mutation coordination, diagnostic serial capture and live clipboard-policy control. |
 
-The repository includes a router/spec parity test. This HLD follows the inspected code baseline; it does not claim a Windows-host acceptance run. The [compatibility register](../../platform/compatibility.md) records the shared-image-format gap.
+HCS snapshots are implemented by GuestWeave with differencing disks and optional saved memory. Creating a snapshot of a running VM saves its memory, terminates the compute system and leaves the VM suspended; it does not leave that VM running. A stopped VM produces a disk-only snapshot. Resume recreates the compute system and consumes its pending saved-state file.
+
+## Guest RPC and the separate SSH tool path
+
+The resident guest bus uses four-byte big-endian length prefixes, JSON request/response envelopes and module-specific data frames. Host `client.Dial` addresses the HCS runtime GUID and HvSocket service corresponding to AF_VSOCK port `2010`. It sends the agent hello and requires the exact `weave-guestd/1` protocol version; a mismatch closes the channel and reports that the agent needs redeployment. Local module registration is a Go registry, rather than a separate module process or SDK gRPC server.
+
+Native execution follows this path:
+
+1. `ExecCommand` resolves the VM and requires a running native Linux guest. An ordinary disk guest is directed to SSH instead.
+2. The HCS engine opens the guest bus and dispatches an `exec` module request. Execution stdio travels on additional vsock streams; PTY execution adds resize handling.
+3. The local `weave-agent` starts the process inside Linux. The host returns guest output and exit status separately from a transport failure. Native graceful stop also requests shutdown through this agent before escalating to termination.
+
+The Windows resident agent registers only the clipboard module at this baseline. Clipboard supervision can deploy the embedded `weave-guestd.exe` over SSH/SFTP, register its HvSocket service with administrator rights, and create a per-user logon task. A Windows service in session 0 would see a different clipboard, so the resident agent runs in the interactive user's session. A guest waiting at logon and a build missing its embedded agent are distinct reported states; clipboard failure does not itself prevent the VM from running.
+
+The CLI's `agent install`, `agent call` and `agent tools`, also exposed under `/weave/vms/{name}/agent`, are another path. They reach a running guest over SSH, upload a caller-supplied binary as `guestweave-agent`, and invoke its `version`, `call` or `tools` commands. This path does not dial the resident framed bus and does not resolve an agent-core release. The provenance and compatibility of that supplied binary require separate verification.
+
+No import, module dependency or bootstrap invocation of `weaveplatform-agent-core` or `weaveplatform-agent-modules` was found in this Windows baseline. A platform diagram must therefore represent these repository-local guest agents explicitly; the presence of the names `weave-agent`, `module` or `proto` does not prove integration with the separate projects.
+
+## Networking and trust boundaries
+
+NIC modes are `nat`, `bridged:<adapter>`, `internet:<adapter>`, `host-only`, `isolated`, `vm-lab` and `none`. They have different reachability. Bridged guests lease from the LAN; private segments lack a host port and a DHCP server, so native NIC configuration is pushed over the guest bus. Host network setup and guest addressing are separate steps. Some network-setup failures are reported while allowing a VM to start without a NIC; private-address push is also best effort. A successful start alone therefore establishes neither network reachability nor guest-agent readiness.
+
+HTTP defaults to `127.0.0.1:8080` and adapts a subset of command operations, including VM lifecycle, snapshots/disks, native exec and the SSH tool path. `ListenAndServe` wraps the router with a persistent bearer token and an address-literal/localhost Host-header guard. `/healthz` and `/openapi.json` bypass the token check but remain behind the Host guard. `NewHTTPHandler` itself has neither wrapper. The token check authenticates API requests; the Host check limits browser DNS-rebinding exposure. MCP is a separate stdio JSON-RPC entrypoint with the privileges of its host process.
+
+## Image transfer and external compatibility
+
+The OCI path publishes a flattened VHDX and GuestWeave VM configuration. Push requires the VM to be stopped and clears the exported host VM identity. Pull normally caches images by manifest digest and creates a differencing child; `--flatten` and `--no-cache` select independent-disk paths. Moving or reclaiming a cached parent must account for dependent VMs.
+
+The media types are `application/vnd.guestweave.vm.config.v2+json` and `application/vnd.guestweave.vm.disk.v2.vhdx+zstd`, with chunk offsets addressing VHDX file bytes. The native kernel/initrd image directory is a separate boot input. The inspected OCI push code does not package that directory, so transferring a VHDX artifact does not establish portability of all native boot prerequisites.
+
+HostWeave's GuestWeave runtime adapter invokes a CLI process. That integration requires the selected Windows command vocabulary and output to match the adapter's expectations; it does not replace the bundled guest protocol with agent-core RPC. Shared raw-chunk images, Imageweave-produced native artifacts and the resident guest-agent protocol need explicit compatibility checks before a cross-product execution guide can claim they work together. The [compatibility register](../../platform/compatibility.md) records these boundaries.
+
+There is already a concrete companion mismatch at these pins: HostWeave requires `weave capabilities`, but this Windows CLI does not register that command. HostWeave therefore marks its Windows GuestWeave driver unhealthy before workload execution. That gap requires an implementation change or a different verified companion version, in addition to runtime acceptance.
+
+## Embedded artifact provenance
+
+The native builder embeds a checked-in Linux binary from `internal/nativebuild/assets/weave-agent`. Its Go build metadata identifies `github.com/deploymenttheory/guestweave-windows/cmd/weaveagent`, revision `3c7d4dfe09303bceea9d30801af5730d164929dd`, and `vcs.modified=true`. The inspected product source is at a different revision. This metadata does not prove that the embedded payload was built from the current source or from a clean, reproducible checkout. The source-level guest behavior above must be checked against the exact embedded payload before a release guide treats it as runtime verified.
+
+## Verification scope
+
+This review traced command dispatch, HCS documents, both resident guest implementations, their host client/framing, the SSH tool path, persistent state and OCI transfer code. Router/spec parity tests are available in the product repository. No Windows-host VM acceptance run was performed for this HLD. Boot, suspend/resume, live snapshot, network modes, clipboard deployment and each claimed cross-product combination still require runtime acceptance against the selected artifacts.

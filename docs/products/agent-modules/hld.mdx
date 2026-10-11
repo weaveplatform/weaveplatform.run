@@ -1,6 +1,7 @@
 ---
 title: 'Agent modules and SDK: HLD'
-description: The module runtime, Host interface and independently released OS capabilities.
+description: Host clients, guest capability services, module processes and their
+  two wire boundaries.
 product: agent-modules
 audience:
 - developer
@@ -13,32 +14,98 @@ evidence:
 - agent-modules:sdk/modulesdk/serve.go
 - agent-modules:sdk/buf.gen.yaml
 - agent-modules:go.work
+- agent-modules:sdk/modulesdk/lifecycle.go
+- agent-modules:sdk/modulesdk/hostclient.go
+- agent-modules:sdk/weavemodule/module.go
+- agent-modules:sdk/weaveclient/weaveclient.go
+- agent-modules:sdk/weaveclient/auth.go
+- agent-modules:sdk/weaveclient/transport.go
+- agent-modules:sdk/protocol/hvchannel/hvchannel.go
+- agent-modules:sdk/weavewire/capability.go
+- agent-modules:modules/weave-linux-exec/main.go
+- agent-modules:modules/weave-linux-clipboard/module.manifest.json
+- agent-modules:.github/agent-core-version
+- guestweave-windows-development:go.mod
 ---
 
-The agent-modules repository owns the current module SDK and OS-specific capability modules. Modules are independent Go modules rather than a single application with one release number.
+The agent-modules repository owns both sides of the capability programming model: a **host-side client SDK** and **guest-side capability implementations**. macOS GuestWeave imports `sdk/weaveclient` on the physical host. Inside a guest, agent-core launches selected OS modules as separate executables; those modules use `modulesdk`, `weavemodule` and shared capability services from the same repository.
 
-<Diagram id="module-startup" title="Module verification, negotiation and startup">
-Core launches a verified module. The SDK negotiates the protocol, serves lifecycle RPCs and connects to authenticated host services during Init. Unsupported protocol windows are rejected before the module lifecycle begins.
+These components implement GuestWeave's macOS guest-integration path. The SDK is linked into host/module binaries; each running capability module is a process. Installed console-scoped modules may be waiting for a session. Windows GuestWeave's main baseline has its own agent/module bus and does not import this SDK; its separately inspected [migration branch](../guestweave/windows-development.mdx) does.
+
+## Repository and runtime layers
+
+| Layer | Location | Responsibility |
+| --- | --- | --- |
+| Host API | `sdk/weaveclient` | Typed calls, correlation, authentication, registry, events and streaming over one owned channel |
+| Capability vocabulary | `sdk/weavewire` | Stable addresses, operation names and payload types |
+| Guest adapter | `sdk/weavemodule` | Implements modulesdk.Module and binds one capability service to core's transport |
+| Capability services | `sdk/weaveexec`, `sdk/weaveclipboard` and peers | OS-neutral decoding, policy, streaming and operation handling |
+| Module runtime | `sdk/modulesdk` | Handshake, lifecycle gRPC, host-service client, configuration and recurring jobs |
+| OS module | `modules/weave-<os>-<capability>` | Executable entrypoint, manifest and OS backend |
+
+For example, `weave-linux-exec/main.go` constructs an exec service with a Unix process starter, wraps it in `weavemodule.New`, then calls `modulesdk.Serve`. Other OS variants substitute their backend while serving the same address. Core supervises processes; the capability service interprets feature operations.
+
+## Host-to-guest command flow
+
+The two wire boundaries are distinct. Host ↔ guest core uses a four-byte big-endian length prefix and JSON envelopes containing module, kind, data and correlation ID. Guest module ↔ core uses local gRPC/protobuf over Unix sockets or named pipes, with launch-token metadata on host-service calls. Core and SDK maintain separate compatible copies of the external framing; its wire compatibility has no negotiation and is not established by modulesdk's lifecycle Protocol `1`.
+
+The host wraps an already-open runtime/hypervisor byte stream in `weaveclient.Client`. The caller owns key provisioning and invokes Authenticate; opening a client does not automatically authenticate it, and Dial with no key returns an unauthenticated client. The client owns one reader, serialises writes and correlates concurrent calls by ID. Two clients reading one connection corrupt a stream whose framing has no resynchronisation.
+
+An execution request follows this path:
+
+1. GuestWeave calls the SDK's typed execution method.
+2. The client encodes the operation under `weave.exec`, with correlation ID, and sends it after the required authentication.
+3. Guest core routes that address to the installed exec module through its transport service.
+4. `weavemodule` dispatches to the exec service, which calls the OS backend.
+5. Replies and streaming events return through core; the client matches them to the waiting operation.
+
+Installation ID and channel address differ: `weave-linux-exec`, `weave-macos-exec` and `weave-windows-exec` can all declare `weave.exec`. Core admits one owner of an address in a guest. The host does not select an OS-specific executable for each call.
+
+The client obtains registry snapshots/changes and distinguishes delivery failures. A healthy presence response does not guarantee an exec or clipboard module. Registry support depends on the core release; a recorded core version lets the SDK distinguish unsupported registry operations from timeouts on a version that should answer.
+
+## Module launch and lifecycle
+
+<Diagram id="module-startup" title="Module startup and local IPC">
+Core verifies the executable and creates its per-module host-services listener before launch. The SDK returns the lifecycle endpoint, connects back during Init and returns requirements for core to check before Start.
 </Diagram>
 
-## Module and Host interfaces
+A module implements `ID`, `Requires`, `Init`, `Start`, `Stop` and `Health`. `modulesdk.Serve` checks the advertised protocol window, opens its local gRPC lifecycle server and writes exactly one stdout handshake line. An unsupported window exits with the dedicated refusal status before Init.
 
-A module implements `ID`, `Requires`, `Init`, `Start`, `Stop` and `Health`. `modulesdk.Serve` handles its negotiated startup and lifecycle serving.
+Init checks module identity and protocol. Optional `ConfigReceiver.SetConfig` runs before the module's Init. The SDK connects to the existing host-services listener with the launch token, calls Init and returns requirements/surfaces. Core rechecks requirements before Start.
 
-The `Host` interface exposes identity, transport, policy, namespaced storage, events, UI brokerage, logging and the module registry. It is deliberately bounded. Configuration and recurring work are optional module-side interfaces, rather than reasons to widen the wire contract.
+Start begins the module's work plus SDK-owned recurring jobs/watchdog. Stop cancels SDK jobs and calls the module's Stop hook; draining in-flight work is the module/service implementation's responsibility. Shutdown ends the process. The SDK also exits on lost core connection, signal or lifecycle-server failure, keeping the child attached to its supervisor.
 
-## Startup and lifecycle
+## What Host supplies
 
-The SDK reads the core-advertised protocol window and refuses an unsupported protocol before initialisation. It opens its lifecycle server, writes one handshake line containing protocol and endpoint information, and then stops using stdout for ordinary output.
+`Host` connects a module to **core inside the same guest/device**:
 
-Host-service connection is deferred until Init, when core’s host listener is available. The SDK exits on shutdown, loss of core connection, signal or server failure, avoiding a detached module continuing without its supervisor.
+| Facility | Boundary |
+| --- | --- |
+| Identity | Core brokers identity/credentials; the module does not own core's private keys |
+| Store | Fixed module namespace, with subdivisions inside it |
+| Policy | Read/watch core's policy |
+| Transport | Send/receive addressed payloads through core's external channel |
+| Events | Event bus, with manifest-declared subscription allow-list |
+| Registry | Read/watch installed modules and runtime condition |
+| Logging/watchdog | Attributed logs and supervisor liveness notification |
+| UI | Surface data declared during Init and returned in its response |
 
-Health has a rich module-level status alongside the standard gRPC health service. Operational guidance must identify which surface it is checking.
+OS bindings are linked into the module backend. They are not remote platform objects offered through Host. Recurring jobs are optional module-side declarations managed by the SDK. UI declaration records data; it does not draw a portal or prove an external renderer is deployed.
 
-## Versioning and capability scope
+## Capabilities and session placement
 
-The repository’s SDK, packaging tools and OS capability modules have independent module paths and releases. The SDK’s protocol-generation core pin is separate from whichever core release a device installs. Compatibility follows the negotiated window and tested release combination.
+The implemented vocabulary includes presence, exec, power, time, metrics, clipboard, session and display. Names such as files, tunnel, network and software are reserved in `weavewire`; reserved names have no operation set and do not imply an implemented capability module.
 
-OS-specific capabilities include execution, display, clipboard, power, presence, session, metrics and time. A module’s presence is different from its health and the capabilities it can actually serve in the current session.
+Clipboard/display target the console user's session. Their manifests declare user privilege and `per-user-console`. Core waits for that session and replaces/stops the module when the console user changes. Other capability modules use system placement. A running VM without a desktop user can therefore offer exec/presence while clipboard/display is unavailable.
 
-Evidence: [Module and Host interfaces](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/modulesdk/module.go), [SDK serve loop](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/modulesdk/serve.go), [protocol generation](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/buf.gen.yaml).
+Operation/session errors, closed channels and registry-support failures are distinct outcomes. ErrNoSession can result from a console capability's caller deadline as well as actual session absence; consult registry/session information before asserting that nobody is logged in. An application should not translate every unanswered call into “VM down”. Backend availability and a module's installed/running/healthy condition need separate evaluation.
+
+## Health and releases
+
+Core uses rich `ModuleService.Health`, including degraded/unhealthy. The SDK also registers standard gRPC health and marks it SERVING when that server is created. That status does not prove Init/Start completed or the OS capability is healthy. Rich Health itself has no lifecycle-state gate; the generic weavemodule adapter returns healthy when its service has no HealthReporter. Capability acceptance therefore needs registry/lifecycle state and an actual operation check as well as the reported health result.
+
+SDK, packaging tools and OS modules have independent Go modules/releases. The SDK generates its private protobuf copy from `.github/agent-core-version`, pinned to `v0.9.2` here. GuestWeave's installer pins and the release-channel verifier pin are separate. Lifecycle protocol window, channel framing, capability vocabulary and installed versions all matter.
+
+This HLD inspects source. It does not certify every backend/session or the installer-selected release binaries against the current source baselines.
+
+Source anchors: [host client](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/weaveclient/weaveclient.go), [guest adapter](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/weavemodule/module.go), [lifecycle](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/modulesdk/lifecycle.go), [capability vocabulary](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/weavewire/capability.go), [Linux exec assembly](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/modules/weave-linux-exec/main.go).

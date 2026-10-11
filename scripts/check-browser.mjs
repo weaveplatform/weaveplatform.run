@@ -28,7 +28,7 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const internal = process.env.DOCS_AUDIENCE === 'internal';
-  const routes = internal ? ['/','/docs/start-here/','/docs/platform/architecture/','/docs/reference/'] : ['/', '/docs/platform/architecture/', '/docs/products/guestweave/macos/', '/docs/products/guestweave/windows/', '/docs/products/hostweave/hld/', '/docs/products/imageweave/hld/', '/docs/products/agent-core/hld/', '/docs/products/agent-modules/hld/', '/docs/development/architecture/', '/docs/operations/publishing/'];
+  const routes = internal ? ['/','/docs/start-here/','/docs/platform/architecture/','/docs/reference/'] : ['/', '/docs/platform/architecture/', '/docs/products/guestweave/macos/', '/docs/products/guestweave/windows/', '/docs/products/guestweave/windows-development/', '/docs/products/hostweave/hld/', '/docs/products/imageweave/hld/', '/docs/products/agent-core/hld/', '/docs/products/agent-modules/hld/', '/docs/development/architecture/', '/docs/operations/publishing/'];
   const results = [];
   for (const viewport of [{width:1440,height:900},{width:390,height:844}]) {
     await page.setViewportSize(viewport);

@@ -12,7 +12,7 @@ function api(endpoint, {allowMissing = false} = {}) {
 const changed = [];
 for (const source of readYaml('sources/sources.lock.yaml').sources) {
   if (source.visibility === 'private' && process.env.DOCS_AUDIENCE !== 'internal') continue;
-  const commit = api(`repos/${source.repository}/commits/main`).sha;
+  const commit = api(`repos/${source.repository}/commits/${encodeURIComponent(source.baseline || 'main')}`).sha;
   if (commit === source.revision) continue;
   const changes = [];
   for (const f of source.files) {

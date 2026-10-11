@@ -2,122 +2,156 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Weave agent: supervision and host services",
+    "title": "Agent core inside the guest",
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [
-      1240,
-      720
+      1360,
+      780
     ]
   },
   "components": [
     {
-      "id": "manager",
+      "id": "hostclient",
       "type": "external",
-      "label": "Service manager",
-      "sublabel": "launchd, systemd or SCM",
+      "label": "GuestWeave SDK client",
+      "sublabel": "Physical host owns stream",
       "pos": [
         40,
-        150
+        160
       ],
       "size": [
-        220,
-        84
+        250,
+        90
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "weave-agent core",
+      "sublabel": "Registry + channel router",
+      "pos": [
+        530,
+        160
+      ],
+      "size": [
+        250,
+        90
+      ]
+    },
+    {
+      "id": "module",
+      "type": "backend",
+      "label": "Capability process",
+      "sublabel": "OS-specific module backend",
+      "pos": [
+        1050,
+        160
+      ],
+      "size": [
+        270,
+        90
+      ]
+    },
+    {
+      "id": "services",
+      "type": "security",
+      "label": "Module host services",
+      "sublabel": "Core-owned local RPC server",
+      "pos": [
+        1050,
+        450
+      ],
+      "size": [
+        270,
+        90
       ]
     },
     {
       "id": "boot",
       "type": "backend",
       "label": "weaveboot",
-      "sublabel": "Stage, supervise and roll back",
+      "sublabel": "Core selection + crash recovery",
       "pos": [
-        350,
-        150
+        530,
+        450
       ],
       "size": [
-        220,
-        84
+        250,
+        90
       ]
     },
     {
-      "id": "core",
-      "type": "backend",
-      "label": "Agent core",
-      "sublabel": "Verify and supervise modules",
+      "id": "manager",
+      "type": "external",
+      "label": "Guest service manager",
+      "sublabel": "launchd, systemd or SCM",
       "pos": [
-        660,
-        150
+        530,
+        620
       ],
       "size": [
-        220,
-        84
+        250,
+        90
       ]
-    },
+    }
+  ],
+  "boundaries": [
     {
-      "id": "module",
-      "type": "backend",
-      "label": "Capability module",
-      "sublabel": "Separate module process",
-      "pos": [
-        970,
-        150
-      ],
-      "size": [
-        220,
-        84
-      ]
-    },
-    {
-      "id": "store",
-      "type": "security",
-      "label": "Host services",
-      "sublabel": "Identity, policy, store and bus",
-      "pos": [
-        660,
-        410
-      ],
-      "size": [
-        220,
-        84
+      "kind": "region",
+      "label": "Guest / device operating system",
+      "wraps": [
+        "core",
+        "module",
+        "services",
+        "boot",
+        "manager"
       ]
     }
   ],
   "connections": [
     {
-      "to": "boot",
-      "label": "Start service",
-      "from": "manager"
-    },
-    {
+      "from": "hostclient",
       "to": "core",
-      "label": "Supervise",
-      "from": "boot"
+      "label": "Authenticated frames",
+      "variant": "security"
     },
     {
-      "to": "module",
-      "label": "Verify and launch",
-      "from": "core"
-    },
-    {
-      "to": "store",
-      "label": "Serve RPC",
       "from": "core",
+      "to": "module",
+      "label": "Lifecycle + delivery",
+      "variant": "emphasis"
+    },
+    {
+      "from": "module",
+      "to": "services",
+      "label": "Token RPC",
       "labelDy": 24
+    },
+    {
+      "from": "manager",
+      "to": "boot",
+      "label": "Start service"
+    },
+    {
+      "from": "boot",
+      "to": "core",
+      "label": "Supervise"
     }
   ],
   "cards": [
     {
-      "dot": "rose",
-      "title": "Verification",
-      "items": [
-        "Core refuses module execution when verification is unavailable."
-      ]
-    },
-    {
       "dot": "violet",
       "title": "Ownership",
       "items": [
-        "Service manager owns weaveboot; core owns module supervision."
+        "Host services live in core inside the guest. Each capability runs as its own process."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Separate trust",
+      "items": [
+        "Channel host keys, local launch tokens and release verification govern different boundaries."
       ]
     }
   ]

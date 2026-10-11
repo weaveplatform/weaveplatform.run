@@ -1,6 +1,6 @@
 ---
 title: 'HostWeave: HLD'
-description: Control-plane interfaces, host agents and the GuestWeave execution boundary.
+description: Control-plane scheduling, capacity providers, host enrollment and workload execution backends.
 product: hostweave
 audience:
 - developer
@@ -9,40 +9,126 @@ owner: ShocOne
 status: code-inspected
 verified_at: '2026-10-11'
 evidence:
+- hostweave:internal/app/app.go
+- hostweave:internal/cli/server/build.go
 - hostweave:internal/server/server.go
+- hostweave:internal/config/config.go
+- hostweave:pkg/broker/broker.go
+- hostweave:pkg/broker/place.go
+- hostweave:pkg/broker/lifecycle.go
+- hostweave:pkg/broker/sweep.go
+- hostweave:pkg/provider/provider.go
+- hostweave:pkg/types/state.go
+- hostweave:api/proto/agent/v1/agent.proto
+- hostweave:internal/agentgw/gateway.go
+- hostweave:agent/agent.go
+- hostweave:agent/identity.go
+- hostweave:agent/supervisor/supervisor.go
+- hostweave:pkg/runtime/runtime.go
+- hostweave:internal/cli/agentcmd/vms.go
+- hostweave:internal/cli/agentcmd/containers.go
 - hostweave:agent/runtime/guestweave/guestweave.go
+- hostweave:agent/runtime/guestweave/capabilities.go
+- hostweave:agent/runtime/guestweave/registry.go
+- hostweave:agent/runtime/vmguest/transfer.go
 - hostweave:pkg/images/vm.go
+- hostweave:go.mod
 - hostweave:Dockerfile
+- guestweave-windows:internal/cli/root.go
 ---
 
-HostWeave coordinates work across hosts. Its control plane handles product requests and placement; a host agent executes the assigned work through a runtime adapter. GuestWeave owns VM lifecycle on the local machine.
+HostWeave schedules jobs onto enrolled devices or provisioned cloud capacity. It owns placement, attempt state, capacity reservations and recovery. A separate `hostweave-agent` process runs on each execution host and supervises the selected runtime. GuestWeave is one VM backend available to that host agent.
 
-<Diagram id="hostweave" title="HostWeave orchestration and VM execution">
-An operator calls the control plane. The host agent initiates its connection and receives work leases; the GuestWeave adapter executes subprocess commands against the local VM manager.
+<Diagram id="hostweave" title="HostWeave control plane and execution backends">
+Clients submit work to the control plane, which persists job state and queues provider actions. The host agent initiates a bidirectional gRPC session to the gateway. Its supervisor calls either the GuestWeave CLI or another configured execution backend.
 </Diagram>
 
-## Control-plane interface
+## Processes and ownership
 
-The server mounts generated OpenAPI handlers on a Chi router. API requests pass through authentication, request limits, observation and operation middleware; authorisation is enforced through the server’s policy layer. Streaming job events, logs and platform changes are registered alongside the generated routes.
+| Component | Runs where | Responsibility |
+| --- | --- | --- |
+| `hostweave` | Control-plane machine or container | HTTP API, agent gateway, broker, SQL queue workers, provider actions, autoscaling and retention tasks. |
+| `hwctl` and web UI | Operator client | Call the HTTP API; they do not perform placement or execute workloads locally. |
+| `hostweave-agent` | Execution host | Enrollment, host/runtime fingerprints, connection recovery, workload supervision, logs and artifact upload. |
+| Runtime drivers | Inside the host agent | Implement `Prepare`, `Start`, `Wait`, `Stop`, `CollectArtifacts` and `Destroy` for their backend. |
+| GuestWeave `weave` CLI | macOS or Windows execution host | Manages local VMs and their guest execution channel when the GuestWeave driver is selected. |
 
-Signed-URL blob transfers use a distinct authorised transfer boundary. They bypass JSON request limits and API middleware by design. Deployment and integration guides must distinguish API credentials from signed artifact URLs.
+The composition root is `internal/app/app.go`. It wires the API, broker, SQL-backed queue, provider manager, provisioner, durable provider actions, agent gateway and autoscaler. These are components of the server process, rather than separately deployed services implied by their package names.
 
-## Host execution
+Capacity providers and workload runtimes have different jobs. The built-in devices provider exposes enrolled machines; AWS, Azure and GCP implementations acquire or manage cloud capacity. A provider supplies a host or provider-native image reference. A runtime executes the workload on that host. Installing GuestWeave alone does not enroll the host in HostWeave.
 
-The GuestWeave adapter supports macOS and Windows hosts. It invokes `weave` as a subprocess and interprets VM information and execution results. It supports an optional configured binary checksum; checksum verification is not unconditional in the constructor.
+## Submission, placement and recovery
 
-Readiness and guest execution capabilities are checked independently of successful process creation. A working CLI invocation alone does not prove that an assigned guest workload is ready.
+The API passes job submission and cancellation to the broker. The broker persists each job transition together with the queue task that acts on it. The successful job path is:
 
-## Storage and deployment
+1. A job enters `queued`, then `evaluating`. The candidate source combines existing capacity, suspended hosts and provider offers.
+2. The scheduler evaluates candidates using the job's placement profile, resource requirements, allowed locations, estimated duration and remaining budget.
+3. The broker rechecks the proposed placement inside a transaction. It verifies job and host state, remaining host capacity and pool limits, reserves capacity with a versioned update, records an attempt and queues provisioning. A stale plan is retried against fresh state.
+4. The provisioner resumes or acquires capacity when necessary and dispatches the assignment through the agent gateway. Job state moves through `placed` and `provisioning` to `running`.
+5. Heartbeats extend the current attempt's lease. Workload exit starts `collecting`; the final result becomes `succeeded` or a terminal failure.
 
-The control plane receives configured store, blob and secret implementations. The repository’s Docker build packages the service, CLI and web UI into a non-root runtime image. Its non-loopback API defaults refer to mounted TLS certificate and key files.
+`failed`, `cancelled` and `timed_out` are separate terminal states. Recovery is conditional: the failure class, `max_attempts` and `retry_on_exit` determine whether another attempt is allowed. Capacity, quota, bootstrap, preemption and host-loss failures can trigger failover; ordinary workload exits require the job's retry setting. A sweeper recovers expired attempt leases. This is a persisted attempt lifecycle, not a claim that arbitrary jobs execute exactly once.
 
-Those files are evidence for a deployment guide, not a complete production installation procedure. Certificate lifecycle, durable storage, migrations, backup and recovery require a tested environment-specific guide.
+## Host connection and security boundaries
 
-## Image compatibility
+HostWeave has two network contracts. The operator contract is an HTTP API generated from its OpenAPI definition. The host contract is the repository's own `AgentService` gRPC protocol.
 
-The inspected parser recognises GuestWeave VHDX v2, Tart and Lume artifact formats. Do not describe all shared Weave OCI images as admitted by this version. See the [compatibility register](../../platform/compatibility.md).
+Enrollment exchanges a join token and CSR over server-authenticated TLS with a pinned gateway CA. After enrollment, `Renew` and the bidirectional `Connect` stream use mutual TLS. The host agent initiates the connection; assignments, cancellation and upload grants travel down that stream, while fingerprints, status, heartbeats and log chunks travel back. A host agent is therefore not an inbound VM API listener.
 
-## Evidence baseline
+The HTTP router applies request limits, observation and bearer API-key authentication before generated handlers. Cedar authorization and strict operation middleware enforce policy checks; public health/bootstrap operations and authentication-only operations are explicit exceptions. Mutations and denials feed the audit trail. Host enrollment identity, operator API credentials and registry credentials are separate credentials with separate consumers.
 
-This HLD is code-inspected at the recorded `main` commit. Private server, runtime adapter, image-parser and Docker evidence is retained in the internal knowledge base. A cross-product acceptance run remains part of the next content milestone.
+Artifact upload and download use signed URLs. The filesystem blob route bypasses the JSON API body limit and API authentication middleware because its handler verifies the transfer signature. Remote object stores supply their own signed transfer URLs. This boundary allows artifact-sized transfers without treating an artifact URL as an operator API key.
+
+## Host runtime selection
+
+The agent offers drivers according to host configuration and platform. The supervisor selects the first healthy configured driver that supports the workload kind; driver names do not describe separate agent processes.
+
+| Driver | Backend and availability |
+| --- | --- |
+| `guestweave` | Local `weave` subprocesses on macOS and Windows. `HOSTWEAVE_GUESTWEAVE_BIN` selects the binary; `HOSTWEAVE_GUESTWEAVE_SHA256` optionally verifies it. |
+| `qemu` | QEMU VM execution when `HOSTWEAVE_QEMU_IMAGES` supplies configured base-image mappings. |
+| `moby` | Docker/Moby container API; its fingerprint reports backend health. |
+| `exec` | Host processes, enabled only through `HOSTWEAVE_AGENT_EXEC`; these run directly on the execution host. |
+
+The supervisor owns per-attempt scratch space, preparation, timeout and cancellation handling, workload probes, output forwarding, collection and signed-URL upload. Once preparation succeeds it defers `Destroy`, including after later failure. Preparation failures remain the driver's responsibility to clean up. A failed runtime, preparation, start or artifact transfer produces a failure report; VM existence is not sufficient for a successful job result.
+
+## GuestWeave VM execution
+
+The HostWeave GuestWeave driver depends on the CLI contract, rather than importing either GuestWeave implementation. A workload receives an attempt-specific VM name and follows this lifecycle:
+
+| Phase | macOS host | Windows host |
+| --- | --- | --- |
+| Prepare | `weave pull IMAGE`, then `weave clone IMAGE NAME --regenerate-random-mac`. | `weave pull IMAGE NAME`. |
+| Configure | `weave set NAME` applies requested CPU and memory. | The same CLI operation applies requested CPU and memory. |
+| Boot | Supervised `weave run --no-graphics NAME` child process. | `weave run --detach --no-graphics NAME`. |
+| Ready and execute | Probe the owned guest execution channel, then run workload argv with `weave exec`. | Require the companion binary execution capabilities, then probe and execute through `weave exec`. |
+| Inputs and outputs | Binary tar streams over non-TTY exec, with SHA-256 checks and hardened extraction. | The same transfer model requires the companion's stdin/binary-stream contract. |
+| Stop and destroy | Stop the VM with a grace period, then delete the attempt VM. | Stop, then delete the attempt VM. |
+
+Capability checks bind supported guest platforms, image formats and binary stdin execution to the companion CLI. An OCI pull also requires isolated registry-auth capability and an environment-aware runner. The driver supplies credentials only to the pull subprocess and clears the stored workload credential afterwards. When a workload carries a resolved image, an unsupported guest platform or format is refused before preparation.
+
+These checks differ by path. macOS fingerprinting can remain healthy when the capability query fails, while resolved-image admission and resolved OCI pulls require compatible reporting. Windows fingerprinting and binary execution require it. The pinned Windows GuestWeave CLI does not register a `capabilities` command; consequently, the inspected HostWeave/Windows CLI combination is marked unhealthy. The implemented adapter is not evidence that this combination is currently usable.
+
+The driver checks VM state before guest exec and rechecks it after exit code `2`, because that value may represent either a guest command exit or a CLI state error. Readiness probes require a successful guest command; successful CLI startup does not prove guest readiness.
+
+`hostweave-agent` is a HostWeave host agent with its own enrollment protocol. It is distinct from the guest `weave-agent` in `weaveplatform-agent-core` and from the Windows GuestWeave native `weaveagent`. The GuestWeave CLI implements the guest-side bridge for its platform. HostWeave's adapter neither imports agent-core/modules nor launches their binaries directly; those relationships are described in the [GuestWeave HLDs](../guestweave/index.md).
+
+## State, artifacts and deployment
+
+The control plane supports SQLite, PostgreSQL and MySQL. Its SQL store retains jobs, attempts, hosts, capacity, provider configuration/actions and policy state; queue tasks use the same database. Logs are forwarded through an in-memory server buffer and are also collected as job artifacts. Result retention and queue purging are separate periodic tasks. Artifact blob storage supports filesystem, S3-compatible storage, Azure Blob and GCS.
+
+Configuration contains secret references, resolved when components are wired. A configured keyring seals credentials at rest. SQL durability, blob durability, encryption keys and the agent CA are separate operational assets and need coordinated backup and recovery procedures.
+
+The Dockerfile builds the service, `hwctl` and static web UI into a non-root control-plane image. It does not package the host agent or the GuestWeave CLI. Its API listener is non-loopback and expects mounted TLS files; it exposes the agent gateway port, but gateway enablement still depends on configuration. The process default API listener is loopback, and configuration validation requires TLS for non-loopback API listeners.
+
+## Image and product integration limits
+
+HostWeave's OCI VM metadata inspector recognises GuestWeave VHDX v2, Tart, Lume chunked and Lume sharded formats. It checks a bounded configuration blob and descriptors; VM disks remain in the registry during this metadata inspection. It does not recognise the shared Weave raw-chunk VM artifact contract at this source baseline.
+
+Imageweave can export raw or VHDX disk containers for named GuestWeave targets. Such an export is not an OCI conversion to every HostWeave-admitted media type, does not enroll a host and does not prove HostWeave workload execution. See the [compatibility register](../../platform/compatibility.md) before treating producer and consumer formats as interchangeable.
+
+## Evidence and remaining validation
+
+This HLD is an implementation inspection of `5080abf8d1a51232246b178d4be34dc9db21e4a0`, not a deployment or cross-product acceptance result. Its private evidence is registered by path and hash in the source lock. The core tracing points are `internal/app/app.go` for composition, `pkg/broker` for transaction and attempt handling, `internal/agentgw` and `agent/agent.go` for the host session, and `agent/supervisor` plus `agent/runtime` for execution.
+
+A tested deployment guide must still verify enrollment, policy enforcement, workload execution, artifact transfer, timeout recovery and restoration of control-plane state in the chosen environment. Format admission, companion capability reporting and guest boot acceptance require separate checks.

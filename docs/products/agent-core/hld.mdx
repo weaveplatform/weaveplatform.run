@@ -1,6 +1,7 @@
 ---
 title: 'Agent core: HLD'
-description: Verification, supervision, local host services and the guest channel.
+description: Guest-side process ownership, module supervision, capability
+  routing, trust and recovery.
 product: agent-core
 audience:
 - developer
@@ -13,34 +14,108 @@ evidence:
 - agent-core:cmd/weave-agent/main.go
 - agent-core:internal/core/core.go
 - agent-core:proto/weave/agent/v1/module.proto
+- agent-core:internal/weaveboot/weaveboot.go
+- agent-core:internal/supervise/launch.go
+- agent-core:internal/supervise/supervisor.go
+- agent-core:internal/hostserv/hostserv.go
+- agent-core:internal/transport/hypervisor.go
+- agent-core:internal/transport/hypervisor_auth.go
+- agent-core:internal/protocol/hvchannel/hvchannel.go
+- agent-core:internal/lifecycle/lifecycle.go
+- agent-core:internal/layout/layout.go
+- agent-core:internal/capability/channel.go
+- agent-core:internal/verify/release_linux.go
+- agent-core:internal/controlsock/authorize_unix.go
+- guestweave-windows-development:internal/command/run_channel.go
 ---
 
-Agent core is the supervised capability runtime on a device or guest. It verifies and launches modules, offers host services and assembles the communication and policy boundaries those modules use.
+Agent core is the guest-side process owner and capability router used by the current macOS GuestWeave integration. The physical host's GuestWeave run process owns the VM and the other end of the channel. Inside the VM, `weave-agent` owns module processes, routes capability messages and supplies services to those modules.
 
-<Diagram id="agent-core" title="Agent supervision and host services">
-The OS service manager runs weaveboot. weaveboot supervises core, and core verifies and supervises capability modules. Core also provides the host-service RPC surface.
+Core also supports device/container contexts, including a Unix socket channel for containers. Windows GuestWeave's main baseline uses its own guest agent, described in its [HLD](../guestweave/windows.mdx). The separately inspected [Windows migration branch](../guestweave/windows-development.mdx) provisions shared core and OS modules instead.
+
+<Diagram id="agent-core" title="Guest-side agent processes and interfaces">
+GuestWeave's host client reaches core through the capability channel. Inside the guest, weaveboot supervises core, core supervises separate capability processes, and modules call core's per-module host services over local IPC.
 </Diagram>
 
 ## Process ownership
 
-The installed service entrypoint is `weaveboot`. It stages and supervises core and provides rollback behaviour. The core binary is `weave-agent`; local control is exposed through `weavectl`. These names replace the speculative binary names in the original repository scaffold.
+| Component | Runs where | Owns |
+| --- | --- | --- |
+| OS service manager | Guest/device OS | Starts the installed weaveboot service |
+| `weaveboot` | Guest/device OS | Selects the current core, verifies staged updates, launches core and handles early crash-loop rollback |
+| `weave-agent` | Guest/device OS | State, module discovery/reconciliation, registry, policy, identity, local control and capability-channel routing |
+| Module supervisor | Inside core | Placement/privilege checks, verified launch, lifecycle, health/watchdog and bounded restarts |
+| Capability module | Separate guest process | OS-specific feature implementation, such as command execution or clipboard |
+| `weavectl` | Local authorised user | Calls core's control endpoint for status and lifecycle operations; Unix permits root or core's own UID |
+| GuestWeave SDK client | Physical VM host | One channel owner per VM run; capability commands, registry and events |
 
-Core owns the module registry and supervisor. A module is a separate process, with its own negotiated protocol and lifecycle. It is not an in-process product plugin.
+“Host services” means core acting as the **module's runtime host**. These services execute inside the guest alongside core. Identity, storage and module supervision are not thereby moved onto the physical VM host.
 
-## Runtime assembly
+## Interfaces and transport
 
-Core assembles identity, policy management, namespaced storage, host services, the event bus, local control and guest transport. The host-service surface lets modules obtain capabilities without owning core’s private keys or another module’s namespace.
+| Interface | Direction | Encoding and purpose |
+| --- | --- | --- |
+| Module lifecycle | Core → module | Local gRPC/protobuf over Unix socket or Windows named pipe: Init, Start, Stop, Health, Shutdown |
+| Host services | Module → core | Per-module local gRPC server: identity, store, policy, events, logging, registry, transport and watchdog |
+| Capability channel | VM/container host ↔ core | Length-prefixed JSON envelopes: module address, kind, opaque payload and correlation ID |
 
-Transport selection depends on host capabilities and configuration. Unsupported selection disables that channel rather than inventing a transport. The guest channel’s host-authentication key is a separate trust input from the keys used to verify module/channel data.
+The capability channel is a different wire from the lifecycle protobuf protocol. Protocol `1` does not establish compatibility with every host-channel vocabulary. Core's `internal/protocol/hvchannel` and the SDK's corresponding copy must encode compatible frames.
 
-## Verification and failure handling
+Configured socket transports are `vsock:<port>` on Linux, `hvsocket:<port>` on Windows and `unix:<absolute path>`. Default/auto probes the supported virtio-serial path. Core does not infer a socket listener merely because a socket facility exists. Invalid channel configuration disables the channel while allowing core to continue.
 
-When no module verifier is configured, the fallback refuses execution. Storage failure can affect identity and queue services. The inspected core distinguishes a locked store that stops startup from other failures that expose degraded/unavailable services; this is a concrete condition to preserve in future recovery guides.
+## Startup and module admission
 
-weaveboot’s readiness and promotion behaviour is separate from a module’s health. A core process being ready does not mean every capability module is healthy.
+Core creates the layout, probes capabilities, opens persistent storage and initialises identity. It assembles policy, registry, transport and host services, then reconciles the installed modules directory. Directory watches, reload signals and a configurable rescan trigger later reconciliation; the CLI's default rescan is one minute.
 
-## Protocol authority
+Admission follows this order:
 
-Core’s `proto/` owns the agent wire contract. Core generates a private implementation copy; the module SDK generates its own copy against a pinned release. Channel and module JSON schemas are also published from core.
+1. Check the manifest's placement and required capabilities. Console-user placement requires user privilege; `per-user-all` placement is refused.
+2. Stage the executable for its target identity and verify the actual path that will run.
+3. Create its private run directory, random launch token and host-services listener. The listener is ready **before** the child starts.
+4. Launch with the supported protocol window and IPC information. Read the single stdout handshake line and validate the selected protocol.
+5. Dial its lifecycle endpoint and call Init with identity, configuration, capabilities, privilege and watchdog cadence. Recheck the requirements returned by Init.
+6. Call Start and publish running state, protocol and surfaces to the registry. Monitor health, watchdog and process exit.
 
-Evidence: [weaveboot entrypoint](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/cmd/weaveboot/main.go), [core assembly and failure handling](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/core/core.go), [module lifecycle protocol](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/proto/weave/agent/v1/module.proto).
+Core refuses duplicate channel addresses: delivery fans out to receivers at an address, so two owners of `weave.exec` could execute one request twice. An OS-specific installation ID such as `weave-linux-exec` can serve the stable `weave.exec` address.
+
+## A capability request through the guest
+
+GuestWeave's SDK client sends an addressed envelope. Core authenticates the external peer, resolves the module address and delivers the opaque payload through that module's transport receive stream. The capability service decodes the operation and calls its OS backend. Replies/events return through core to the SDK client, which correlates them with pending calls.
+
+Core answers registry requests itself and publishes revisioned changes after authentication. Missing, non-running and overloaded modules can produce `delivery.failed`. A powered-on VM and a reachable core do not prove that the requested module is installed or serving.
+
+## Trust boundaries
+
+- **Executable admission:** the CLI supplies a platform verifier or signed-channel verifier. The lower-level `core.Run` refuses every module if no verifier is supplied. Linux's default release verifier checks root ownership and group/world write bits of the executable and its immediate parent. It assumes trusted installation provenance; it does not query package provenance or perform an exec-time cryptographic signature check.
+- **Local module identity:** each host-services server binds a module identity to a random launch token, checked for unary and streaming RPCs. Store namespaces are fixed to that module.
+- **External host authority:** the guest is provisioned with a public key and the VM host retains the private key. Core requires proof of possession before capability traffic and registry disclosure. Missing/malformed keys leave core running but operations refused. New connections authenticate again.
+
+The external host key differs from the manifest root that verifies release/channel material. A successful hello establishes neither module provenance nor authority to execute commands.
+
+## Durable state and updates
+
+The layout separates durable state, module versions, staging, logs, runtime sockets and execution copies. `--state-dir`/`WEAVE_STATE_DIR` relocates the layout. `--modules-dir` changes both discovery and lifecycle installation. Installed modules have `current`, `previous` and `versions/<version>` entries.
+
+The lifecycle manager serialises installation per module. Signed-channel installation checks channel signatures, artifact digest/size, expiry and sequence before staging and replacing a process. Local installation is a separate path using local files and the configured executable verifier; it does not perform those remote-channel freshness checks.
+
+Channel fetching requires four HTTP-served bundle files: `manifest.json`, its signature, `signing.pub` and that key's signature. Selected artifacts are downloaded through the HTTP client. The separately inspected release-channel repository currently records bare OCI references and permits unsigned promotions; those entries do not directly satisfy this installer contract. See the [compatibility register](../../platform/compatibility.md).
+
+For running modules, the default health gate requires healthy status for three seconds within a 30-second window. A console module waiting for a user session can be promoted **without a runtime health proof**; it starts when the session becomes available. Previous-version retention supports rollback. An unavailable sequence store refuses channel installs; a file marker alone cannot override that failure.
+
+Core updates use a separate loop. weaveboot verifies a staged core, changes current/previous markers, then launches it. A readiness marker or sufficient stable uptime clears the early-crash counter; repeated early failures can restore the previous core. Readiness affects crash-loop recovery, rather than delaying the initial marker promotion. Core writes the marker after registering module runners and starting the control server goroutine; it does not wait for every module to start or confirm that the control listener has bound. The marker does not certify capability health.
+
+## Failure behaviour
+
+| Condition | Implemented response | Operational distinction |
+| --- | --- | --- |
+| Store already locked | Startup fails | Another core may own the store/channel/modules |
+| Other store or identity failure | Core can run degraded, with dependent features unavailable | Liveness does not restore identity or durable queues |
+| Modules directory unreadable on initial reconciliation | Startup fails | Broken installation differs from an empty directory |
+| One invalid/unlaunchable module | Record its condition; other modules can start | Read the registry's state/detail for that module |
+| No console user | Console-scoped module waits for a session | Clipboard/display absence can be expected placement |
+| Repeated unhealthy polls or watchdog silence | Restart under supervisor policy and limits | Degraded health resets strikes rather than requesting restart |
+| Channel/key unavailable | Guest operations unavailable; core can remain alive | Separate transport/authentication from module health |
+
+This design follows the source lock. GuestWeave's installed payload versions have separate installer pins; no release-binary or host/guest runtime acceptance is claimed.
+
+Source anchors: [assembly](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/core/core.go), [launch order](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/supervise/launch.go), [placement and supervision](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/supervise/supervisor.go), [channel framing](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/protocol/hvchannel/hvchannel.go), [core rollback loop](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/weaveboot/weaveboot.go).

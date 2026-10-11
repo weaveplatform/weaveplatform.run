@@ -13,10 +13,11 @@ verified_at: '2026-10-11'
 evidence:
 - hostweave:agent/runtime/guestweave/guestweave.go
 - agent-core:internal/core/core.go
+- guestweave-windows-development:go.mod
 slug: /start-here
 ---
 
-Weave brings together virtual machine management, workload orchestration, image construction and a capability-based agent runtime. This knowledge base explains the responsibilities of those parts and the interfaces between them.
+Weave brings together virtual machine management and guest integration, workload orchestration, image construction and a capability-based agent runtime. macOS GuestWeave composes the host SDK with guest core/modules; Windows main has its own guest agent bus, while its reviewed development branch migrates to the shared architecture. This knowledge base explains their process ownership, interfaces and integration limits.
 
 ## Choose your starting point
 
@@ -32,7 +33,7 @@ Weave brings together virtual machine management, workload orchestration, image 
 
 ## Read the evidence correctly
 
-The initial release focuses on high-level designs. These pages describe inspected implementation at recorded commits on `main`; they do not certify a deployed environment or every host/guest combination. A release tag and an implementation baseline are separate facts.
+The initial release focuses on high-level designs. These pages describe inspected implementation at recorded main commits and an explicitly labelled Windows development baseline; they do not certify a deployed environment or every host/guest combination. A release tag and an implementation baseline are separate facts.
 
 The [compatibility register](../platform/compatibility.md) names integration limits. Runnable tutorials and infrastructure guides are added when their exact versions and procedures have been exercised. [The roadmap](../development/roadmap.md) records that work.
 

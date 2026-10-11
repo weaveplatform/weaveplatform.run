@@ -1,26 +1,197 @@
 {
   "schema_version": 1,
   "diagram_type": "architecture",
-  "meta": {"title": "Weave platform: execution and image construction", "locale": "en", "quality_profile": "showcase", "viewBox": [1240, 720]},
+  "meta": {
+    "title": "GuestWeave composition and platform relationships",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      780
+    ]
+  },
   "components": [
-    {"id": "operator", "type": "external", "label": "Operator", "sublabel": "API, UI or hwctl", "pos": [40, 140], "size": [190, 84]},
-    {"id": "orchestrator", "type": "backend", "label": "HostWeave", "sublabel": "Placement and work leases", "pos": [360, 140], "size": [230, 84]},
-    {"id": "hostagent", "type": "backend", "label": "Host agent", "sublabel": "Runtime adapter", "pos": [690, 140], "size": [220, 84]},
-    {"id": "vmmanager", "type": "backend", "label": "GuestWeave", "sublabel": "Host VM lifecycle", "pos": [1020, 140], "size": [190, 84]},
-    {"id": "guestagent", "type": "backend", "label": "Guest agent core", "sublabel": "Supervised capabilities", "pos": [1020, 400], "size": [190, 84]},
-    {"id": "imagebuilder", "type": "backend", "label": "Imageweave", "sublabel": "Packer construction", "pos": [40, 400], "size": [190, 84]},
-    {"id": "artifacttools", "type": "backend", "label": "Weave OCI", "sublabel": "Artifact handoff and checks", "pos": [360, 400], "size": [230, 84]}
+    {
+      "id": "hostadapter",
+      "type": "backend",
+      "label": "HostWeave host agent",
+      "sublabel": "Optional CLI driver",
+      "pos": [
+        40,
+        130
+      ],
+      "size": [
+        210,
+        90
+      ]
+    },
+    {
+      "id": "macmanager",
+      "type": "backend",
+      "label": "GuestWeave on macOS",
+      "sublabel": "Host VM session + SDK client",
+      "pos": [
+        350,
+        130
+      ],
+      "size": [
+        240,
+        90
+      ]
+    },
+    {
+      "id": "guestcore",
+      "type": "backend",
+      "label": "Agent core",
+      "sublabel": "Guest process and router",
+      "pos": [
+        690,
+        130
+      ],
+      "size": [
+        220,
+        90
+      ]
+    },
+    {
+      "id": "capabilities",
+      "type": "backend",
+      "label": "OS modules",
+      "sublabel": "Guest capability processes",
+      "pos": [
+        1010,
+        130
+      ],
+      "size": [
+        200,
+        90
+      ]
+    },
+    {
+      "id": "winmanager",
+      "type": "backend",
+      "label": "GuestWeave on Windows",
+      "sublabel": "Host HCS + local bus client",
+      "pos": [
+        350,
+        400
+      ],
+      "size": [
+        240,
+        90
+      ]
+    },
+    {
+      "id": "winresident",
+      "type": "backend",
+      "label": "Resident guest agent",
+      "sublabel": "Repository-local module bus",
+      "pos": [
+        690,
+        400
+      ],
+      "size": [
+        260,
+        90
+      ]
+    },
+    {
+      "id": "imagebuilder",
+      "type": "backend",
+      "label": "Imageweave",
+      "sublabel": "Native / derived image paths",
+      "pos": [
+        40,
+        650
+      ],
+      "size": [
+        210,
+        90
+      ]
+    },
+    {
+      "id": "artifacttools",
+      "type": "database",
+      "label": "OCI layouts and tooling",
+      "sublabel": "Build, inspect and target export",
+      "pos": [
+        350,
+        650
+      ],
+      "size": [
+        260,
+        90
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Guest managed from macOS",
+      "wraps": [
+        "guestcore",
+        "capabilities"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Guest managed from Windows",
+      "wraps": [
+        "winresident"
+      ]
+    }
   ],
   "connections": [
-    {"from": "operator", "to": "orchestrator", "label": "HTTPS API", "variant": "emphasis"},
-    {"from": "orchestrator", "to": "hostagent", "label": "Work leases", "variant": "emphasis"},
-    {"from": "hostagent", "to": "vmmanager", "label": "CLI adapter", "variant": "emphasis"},
-    {"from": "vmmanager", "to": "guestagent", "label": "Guest channel", "labelDy": 24},
-    {"from": "imagebuilder", "to": "artifacttools", "label": "Build manifest"}
+    {
+      "from": "hostadapter",
+      "to": "macmanager",
+      "label": "CLI",
+      "variant": "dashed"
+    },
+    {
+      "from": "hostadapter",
+      "to": "winmanager",
+      "label": "CLI",
+      "variant": "dashed"
+    },
+    {
+      "from": "macmanager",
+      "to": "guestcore",
+      "label": "Frames",
+      "variant": "emphasis"
+    },
+    {
+      "from": "guestcore",
+      "to": "capabilities",
+      "label": "IPC",
+      "variant": "emphasis"
+    },
+    {
+      "from": "winmanager",
+      "to": "winresident",
+      "label": "Local wire",
+      "variant": "emphasis"
+    },
+    {
+      "from": "imagebuilder",
+      "to": "artifacttools",
+      "label": "OCI tools"
+    }
   ],
   "cards": [
-    {"dot": "cyan", "title": "Execution", "items": ["HostWeave places work; GuestWeave owns VM lifecycle."]},
-    {"dot": "amber", "title": "Compatibility", "items": ["Image construction does not prove runtime compatibility."]},
-    {"dot": "violet", "title": "Agent roles", "items": ["The host agent and guest agent core are separate processes."]}
+    {
+      "dot": "cyan",
+      "title": "Composition",
+      "items": [
+        "The SDK client runs on the macOS host; core and capability modules run in its guest."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Different contracts",
+      "items": [
+        "Windows uses its own guest agent. Exported disks still need consumer admission and runtime acceptance."
+      ]
+    }
   ]
 }

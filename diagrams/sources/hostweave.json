@@ -2,54 +2,54 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "HostWeave: placement to VM execution",
+    "title": "HostWeave: control plane, host agent and execution backends",
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [
-      1240,
-      720
+      1320,
+      800
     ]
   },
   "components": [
     {
       "id": "caller",
       "type": "external",
-      "label": "Operator",
-      "sublabel": "hwctl, web UI or API",
+      "label": "Operator / client",
+      "sublabel": "hwctl, web UI, HTTP API",
       "pos": [
         40,
-        150
+        155
       ],
       "size": [
-        220,
+        230,
         84
       ]
     },
     {
       "id": "server",
       "type": "backend",
-      "label": "Control plane",
-      "sublabel": "API, placement and leases",
+      "label": "HostWeave control plane",
+      "sublabel": "API, broker, providers, gateway",
       "pos": [
-        350,
-        150
+        370,
+        155
       ],
       "size": [
-        220,
+        230,
         84
       ]
     },
     {
       "id": "agent",
       "type": "backend",
-      "label": "Host agent",
-      "sublabel": "Work execution and health",
+      "label": "hostweave-agent",
+      "sublabel": "Fingerprint + supervisor",
       "pos": [
-        660,
-        150
+        700,
+        155
       ],
       "size": [
-        220,
+        230,
         84
       ]
     },
@@ -57,67 +57,126 @@
       "id": "cli",
       "type": "backend",
       "label": "GuestWeave CLI",
-      "sublabel": "Pinned runtime binary",
+      "sublabel": "macOS / Windows VM driver",
       "pos": [
-        970,
-        150
+        1030,
+        155
       ],
       "size": [
-        220,
+        230,
         84
       ]
     },
     {
       "id": "state",
       "type": "database",
-      "label": "Control-plane state",
-      "sublabel": "Configured store and blobs",
+      "label": "SQL store + lease queue",
+      "sublabel": "SQLite, PostgreSQL or MySQL",
       "pos": [
-        350,
-        410
+        370,
+        475
       ],
       "size": [
-        220,
+        230,
+        84
+      ]
+    },
+    {
+      "id": "providers",
+      "type": "cloud",
+      "label": "Capacity providers",
+      "sublabel": "Devices, AWS, Azure, GCP",
+      "pos": [
+        40,
+        475
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "backends",
+      "type": "backend",
+      "label": "Other runtime drivers",
+      "sublabel": "Moby, QEMU, opt-in exec",
+      "pos": [
+        700,
+        475
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "vm",
+      "type": "external",
+      "label": "Local guest VM",
+      "sublabel": "Platform-specific execution",
+      "pos": [
+        1030,
+        475
+      ],
+      "size": [
+        230,
         84
       ]
     }
   ],
   "connections": [
     {
+      "from": "caller",
       "to": "server",
-      "label": "HTTPS",
-      "from": "caller"
+      "label": "HTTP API"
     },
     {
-      "to": "agent",
-      "label": "Work leases",
-      "from": "server"
-    },
-    {
-      "to": "cli",
-      "label": "Subprocess calls",
-      "from": "agent"
-    },
-    {
-      "to": "state",
-      "label": "Read and write",
       "from": "server",
+      "to": "agent",
+      "label": "Assignments"
+    },
+    {
+      "from": "agent",
+      "to": "cli",
+      "label": "Subprocess argv"
+    },
+    {
+      "from": "server",
+      "to": "state",
+      "label": "State + queue",
+      "labelDy": 24
+    },
+    {
+      "from": "server",
+      "to": "providers",
+      "label": "Provider actions"
+    },
+    {
+      "from": "agent",
+      "to": "backends",
+      "label": "Runtime lifecycle",
+      "labelDy": 24
+    },
+    {
+      "from": "cli",
+      "to": "vm",
+      "label": "Lifecycle + exec",
       "labelDy": 24
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Outbound connection",
+      "title": "Connection ownership",
       "items": [
-        "The host agent initiates its connection to the control plane."
+        "The host agent dials out; assignments and status share its bidirectional session."
       ]
     },
     {
       "dot": "amber",
-      "title": "Boundary",
+      "title": "Execution boundary",
       "items": [
-        "The guest runtime adapter invokes the CLI; it does not import it."
+        "The GuestWeave driver shells out to weave. Other drivers do not use GuestWeave."
       ]
     }
   ]

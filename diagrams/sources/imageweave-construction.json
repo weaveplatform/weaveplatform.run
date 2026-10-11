@@ -2,23 +2,22 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Imageweave: construction is not runtime qualification",
+    "title": "Imageweave construction and runtime acceptance",
     "locale": "en",
     "quality_profile": "showcase"
   },
   "lanes": [
     {
       "id": "construction",
-      "label": "Construction"
+      "label": "Construction + packaging"
     },
     {
-      "id": "verification",
-      "label": "Artifact verification"
+      "id": "qualification",
+      "label": "Runtime evidence"
     }
   ],
   "mainPath": [
     "inputs",
-    "plan",
     "packer",
     "import",
     "inspect"
@@ -29,81 +28,87 @@
       "lane": "construction",
       "col": 0,
       "type": "external",
-      "label": "Pinned inputs",
-      "sublabel": "Media + recipe"
-    },
-    {
-      "id": "plan",
-      "lane": "construction",
-      "col": 1,
-      "type": "backend",
-      "label": "Resolve plan",
-      "sublabel": "Scenario and template"
+      "label": "Pinned scenario",
+      "sublabel": "Media or parent image",
+      "width": 165
     },
     {
       "id": "packer",
       "lane": "construction",
-      "col": 2,
+      "col": 1,
       "type": "backend",
-      "label": "Packer build",
-      "sublabel": "Install or restore"
+      "label": "Packer / builder",
+      "sublabel": "Native APIs or QEMU",
+      "width": 165
     },
     {
       "id": "import",
-      "lane": "verification",
-      "col": 3,
+      "lane": "construction",
+      "col": 2,
       "type": "backend",
-      "label": "OCI handoff",
-      "sublabel": "Manifest-listed outputs"
+      "label": "OCI packaging",
+      "sublabel": "Declared disk + state",
+      "width": 165
     },
     {
       "id": "inspect",
-      "lane": "verification",
-      "col": 4,
+      "lane": "construction",
+      "col": 3,
       "type": "security",
-      "label": "Inspect",
-      "sublabel": "Deep + strict"
+      "label": "Checked OCI layout",
+      "sublabel": "Content conformance",
+      "width": 165
+    },
+    {
+      "id": "accept",
+      "lane": "qualification",
+      "col": 3,
+      "type": "security",
+      "label": "Runtime acceptance",
+      "sublabel": "Fresh clones + reboot",
+      "width": 165,
+      "yOffset": 30
     }
   ],
   "edges": [
     {
       "from": "inputs",
-      "to": "plan",
-      "label": "Resolve",
-      "role": "main"
-    },
-    {
-      "from": "plan",
       "to": "packer",
-      "label": "Build",
+      "label": "Resolve + build",
       "role": "main"
     },
     {
       "from": "packer",
       "to": "import",
-      "label": "Manifest",
+      "label": "Manifest / bundle",
       "role": "main"
     },
     {
       "from": "import",
       "to": "inspect",
-      "label": "Inspect",
+      "label": "Deep check",
       "role": "main"
+    },
+    {
+      "from": "inspect",
+      "to": "accept",
+      "label": "Selected validator",
+      "role": "branch"
     }
   ],
   "cards": [
     {
       "dot": "amber",
-      "title": "Qualification boundary",
+      "title": "Acceptance differs by path",
       "items": [
-        "A constructed and inspected artifact still needs runtime evidence."
+        "Native delivery returns unverified. Linux delivery also runs its runtime validator."
       ]
     },
     {
       "dot": "cyan",
-      "title": "Publication boundary",
+      "title": "Other paths",
       "items": [
-        "Native construction does not publish or promote an image."
+        "Target export and candidate publication are separate commands and workflows described in the HLD."
       ]
     }
   ]
