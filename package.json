@@ -19,7 +19,7 @@
     "test": "node --test scripts/tests/*.test.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.58.2",
+    "@playwright/test": "1.64.0",
     "ajv": "8.17.1",
     "ajv-formats": "3.0.1",
     "gray-matter": "4.0.3",
