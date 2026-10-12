@@ -55,7 +55,9 @@ a project may be further defined and clarified by project maintainers.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the project team at [INSERT EMAIL ADDRESS]. All
+reported privately to the [repository maintainers](https://github.com/weaveplatform/weaveplatform.run/blob/main/.github/CODEOWNERS).
+If you do not have a private contact route, open a minimal issue requesting one
+without including incident details. All
 complaints will be reviewed and investigated and will result in a response that
 is deemed necessary and appropriate to the circumstances. The project team is
 obligated to maintain confidentiality with regard to the reporter of an incident.

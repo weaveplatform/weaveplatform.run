@@ -1,0 +1,32 @@
+{
+  "name": "weaveplatform-docs-workspace",
+  "private": true,
+  "workspaces": ["site", "packages/docs-kit"],
+  "engines": {"node": ">=22 <23"},
+  "scripts": {
+    "start": "npm run diagrams && npm run start --workspace site -- --no-open",
+    "validate": "node scripts/validate.mjs",
+    "diagrams": "node scripts/diagrams.mjs",
+    "diagrams:visual": "node scripts/diagrams.mjs --visual",
+    "build": "npm run validate && npm run contracts && npm run diagrams && npm run build --workspace site && pagefind --site site/build --glob 'docs/**/*.html'",
+    "contracts": "node scripts/contracts.mjs",
+    "serve": "npm run serve --workspace site -- --no-open",
+    "check:browser": "node scripts/check-browser.mjs",
+    "typecheck": "tsc --noEmit --project site/tsconfig.json",
+    "check:links": "node scripts/check-links.mjs",
+    "sources:check": "node scripts/source-refresh.mjs",
+    "companion:prepare": "node scripts/prepare-companion.mjs",
+    "test": "node --test scripts/tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
+    "gray-matter": "4.0.3",
+    "markdownlint-cli2": "0.20.0",
+    "pagefind": "1.5.2",
+    "typescript": "5.9.3",
+    "wrangler": "4.149.0",
+    "yaml": "2.8.2"
+  }
+}

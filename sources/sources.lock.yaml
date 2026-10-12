@@ -1,0 +1,542 @@
+schema_version: 1
+sources:
+- id: agent-core
+  repository: weaveplatform/weaveplatform-agent-core
+  revision: 58f13ffcdba1641a692f985b3b26d053bb467da5
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/core/core.go
+    sha256: 1234332299f236c547c984987709bbe4e1304cd28350a4cabae65b1b91204d9e
+  - path: cmd/weaveboot/main.go
+    sha256: a7737ccc0aa51c5556a47ccb0f6a19739fb8274b0714d3b729af4214593f08d7
+  - path: cmd/weave-agent/main.go
+    sha256: 72a6944d55f179a2eacb4b2cb65eb6462ecd2ab7ea3ae72f7a4c5cb86c998c59
+  - path: proto/weave/agent/v1/handshake.proto
+    sha256: f1fc395988c456663cbf75badcbf5de6d46a9f554572344a1c320725c46c9ffd
+    snapshot: sources/contracts/agent-core/proto/weave/agent/v1/handshake.proto
+  - path: proto/weave/agent/v1/module.proto
+    sha256: b52a985552688498a391db59890e16ab14c6aadfb71e92f04ac2dba82836cc77
+    snapshot: sources/contracts/agent-core/proto/weave/agent/v1/module.proto
+  - path: proto/weave/agent/v1/registry.proto
+    sha256: 1cb6a4b087bca9d23dfde006f7f250186afe64abc297af378fa24cfd1f18f7ee
+    snapshot: sources/contracts/agent-core/proto/weave/agent/v1/registry.proto
+  - path: schema/module-manifest.schema.json
+    sha256: 00bbb805eeee39751bf48084ebf11b1bbec9d1f988221eb83fd2378674609961
+    snapshot: sources/contracts/agent-core/schema/module-manifest.schema.json
+  - path: schema/channel-manifest.schema.json
+    sha256: 31a7f0ad939fe3c9d2bc5385cdcc395bcc452cd12e705c92e162367396635c22
+    snapshot: sources/contracts/agent-core/schema/channel-manifest.schema.json
+  - path: internal/transport/transport.go
+    sha256: 45038435a23d032a6e4459c33bcad775e49b6029c7f149844501c8e78688b408
+  - path: internal/weaveboot/weaveboot.go
+    sha256: c8f98db2fca0639976b7e3590e6fea59da3d9e2f908051ca2719300a25271ef8
+  - path: internal/supervise/launch.go
+    sha256: cfe9fc48d6480af71229aff83ac56d7580056b13b1f7f9a89ad5ea600be3fddd
+  - path: internal/supervise/supervisor.go
+    sha256: a960b18e26fa7bdb2185d615ba2ebeba3a0d69981e27c3507d1441fce42b66f5
+  - path: internal/hostserv/hostserv.go
+    sha256: 15e8feda5c30f1840cd81079b3b55cab973ef0b5b6a56cfc011620d9dcfc45a3
+  - path: internal/transport/hypervisor.go
+    sha256: a1f96ce3b1e8a4d0fd61acf9e579188d9e309cc6df27f3558bb8c71d102e8d2a
+  - path: internal/transport/hypervisor_auth.go
+    sha256: 6bb3f15dedb788f47922312993e38d1a54f1e01ccdcc91a6a22aaaa0f4771a06
+  - path: internal/protocol/hvchannel/hvchannel.go
+    sha256: 7eb9484159500aa1abbafe75a37436b2612963512f3b76af52e6eecf2c6dc8f9
+  - path: internal/lifecycle/lifecycle.go
+    sha256: 9c0fb535fae17f36bcb359bd7305c7f7197e769533cb04cac60b16f588c43143
+  - path: internal/layout/layout.go
+    sha256: 7ef43b462bae0ac8066fb6db6e95bb965c5116f069b7d8aa8442db6d27398194
+  - path: internal/capability/channel.go
+    sha256: 451c76e04b5bf48abfdc76123656cff387350ad26586103d52a9e3998a1e8105
+  - path: internal/verify/release_linux.go
+    sha256: f43b18bbe522d507a0e1731c15365ebcfea754a8c99a9fcb4fdfd0c917b6daaf
+  - path: internal/controlsock/authorize_unix.go
+    sha256: e97dca7371e96b7c3633288fb56260f75f82a595ee4438a3688760c5e2a7574b
+- id: agent-modules
+  repository: weaveplatform/weaveplatform-agent-modules
+  revision: 733ce935024428cadafc68957d2d49419c28d4fb
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: sdk/modulesdk/module.go
+    sha256: 8b0feaedd3ab64031092b2e6fc28b53c3dde48f632715e48161edb94c788d26c
+  - path: sdk/modulesdk/serve.go
+    sha256: 39480f0729e0b573777243e9ac1a1089704d366606e539246fef1395afdb5e9e
+  - path: sdk/buf.gen.yaml
+    sha256: 49eba809924aabed67d632580bfd2f95b5eaac44183acbfb6aa85e1151b81193
+  - path: .github/agent-core-version
+    sha256: 11ef3020fd8f26c94d86e77b8f7affb9cfc742fa665e86ce006d2b5dc6294cd6
+  - path: go.work
+    sha256: e4c4afa9fb7d58da0fcec6ff00d39c2e3ab6bd89327924305db76ba852e0497f
+  - path: sdk/weaveclient/weaveclient.go
+    sha256: 9a73b55a75e4182396f187dc9f4de4e9e1f57297ed82e3d5b96aa374dd583365
+  - path: sdk/modulesdk/lifecycle.go
+    sha256: bd3858365e8e3727a710d401e9db96fd1709adb83a2557ae1726ce781cba0ebb
+  - path: sdk/modulesdk/hostclient.go
+    sha256: 7ebd8d67b5e0e9d07ce8ea2b9199ae573cf0e85f20d87ba7231262f06be6b6ea
+  - path: sdk/weavemodule/module.go
+    sha256: b1fcaa1c3185ab4a167cc4b136a1ba1d9562acc61b1d958372c72a10b96902c0
+  - path: sdk/weaveclient/auth.go
+    sha256: 430ca5642c87f97881a116ae6e73bc79dde3b591fc3bfca30cd29a72d63dea1c
+  - path: sdk/weavewire/capability.go
+    sha256: f692b9cfe75e652da522f97300baf98401cf940e56b9ef7f8c2be861f91e4010
+  - path: modules/weave-linux-exec/main.go
+    sha256: 00dac17a32f0c811de478a86ae195c9f9cc7af4bf0bc5ff6dbd07c4a63d527ab
+  - path: modules/weave-linux-clipboard/module.manifest.json
+    sha256: 8c04263046661ea86c73a62d99d17ca302083c6f198d62926fc5a41483695212
+  - path: sdk/protocol/hvchannel/hvchannel.go
+    sha256: 0cee3b59c32c345a9b0c1c865ee17b66897c17758bd25fbbda50f45fbb089126
+  - path: sdk/weaveclient/transport.go
+    sha256: 7c99b1d3f15918c2cc4e62a1987ba70b8285f83434584932da2cc63bcdbcca2b
+- id: hostweave
+  repository: weaveplatform/hostweave
+  revision: 5080abf8d1a51232246b178d4be34dc9db21e4a0
+  baseline: main
+  visibility: private
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/server/server.go
+    sha256: 96c12aa042317b10511534542de74a0200c811160404cbc79eda85292940980f
+  - path: agent/runtime/guestweave/guestweave.go
+    sha256: 2db66f57e8d0c62631f2f3343d3ec46f3749003f868666fd0f09e3a7cda3f155
+  - path: pkg/images/vm.go
+    sha256: 63d500e20c06c9dbfc7b6d3654a2546d4004442df7970be362591b1653a65efa
+  - path: pkg/images/registry.go
+    sha256: 7aef343231315de5fb81dc2faf492175a9d558a4fa21dc36f36a103e8d308f8d
+  - path: Dockerfile
+    sha256: 18e4d247437e3023ff314990d6d52e0ef1a5d2beefc9ebb1acd85267f6d8fdb9
+  - path: api/openapi.yaml
+    sha256: 155ed8f348e4b2f47db5401f003198f5a587f753cc580f28d23c725f898d6a15
+  - path: api/proto/agent/v1/agent.proto
+    sha256: d2717ee169736cd3c23f576f22f5b5ac22499bd0f84231eaafd8d5f4d9979493
+  - path: internal/app/app.go
+    sha256: 78d5d374a759760dfc3cf560479019348e27c0a0f348a361eafed927b7e50a20
+  - path: internal/cli/server/build.go
+    sha256: 9991a2a9e7085f64bff29acf3781b00a51cb99bfb5172f32378905b93f77dbc6
+  - path: internal/config/config.go
+    sha256: f2a370107723b1deaad7dadc33d633905a39cc5d561b7c03f2655f6971361560
+  - path: pkg/broker/broker.go
+    sha256: 6bbbd0277ec6c7ced27a8de2c550fb8f373ff6976e8e1b028af13c9453ac9ba7
+  - path: pkg/broker/place.go
+    sha256: 20ead320de065515e8b3f6def6ce0cf9f96c92bf5c622097d245258c88f0a1cb
+  - path: pkg/broker/lifecycle.go
+    sha256: 54e714bb3aa190c6236378e020127243eae9e546fead5caf8cac561a850cbabb
+  - path: pkg/broker/sweep.go
+    sha256: 4fa3469a0154b1768403e1a56824628d398af92c8e9c7c8544f04b1cae356629
+  - path: pkg/provider/provider.go
+    sha256: 9f700366cf518d1de1dec6d1f8d991af8bf64927d601ea01540ea352530fe8cd
+  - path: pkg/types/state.go
+    sha256: 63f02451f3dfb1d07c5a712d4ca8b72a0ffe6fd73568b90e147d0e5985d17f78
+  - path: internal/agentgw/gateway.go
+    sha256: 9d2bb6251c502aa5bc07c7b04f779f4af895d19edf9e8c73fc035d8de7949421
+  - path: agent/agent.go
+    sha256: e32faa42eeea3756ca9386c059ba1e2c4705c5272adae45586ae155255984f02
+  - path: agent/identity.go
+    sha256: f67e9b244211fa220bc98091f58ea5377e3aa3a0cc09202910dd0ad224dd43ee
+  - path: agent/supervisor/supervisor.go
+    sha256: 9ccd6f0976b50d9080c247119b3f0be72370de2e10cfdc848edff7e4dd2151e9
+  - path: pkg/runtime/runtime.go
+    sha256: 16f41481ca9028d0b89d58b54e42a0b85e5586a7601ec58ff326ef06da046d87
+  - path: internal/cli/agentcmd/vms.go
+    sha256: 933b684f95f9a180d8558b37250c91e542ca30f5fce38bc80d41cbca0c27ee29
+  - path: internal/cli/agentcmd/containers.go
+    sha256: 6ef0246539766b84478bc3ae204a5ca44bcba0227fbd8f2398ff92d8d744feb0
+  - path: agent/runtime/guestweave/capabilities.go
+    sha256: 3d1473e79c7fa537efb250d814ee31549113f5d4caac850e4b124914e52c6862
+  - path: agent/runtime/guestweave/registry.go
+    sha256: 55b61d059be89bbe51e7f709306aead7bd3dcd2efd902bafefd5eda29ee7d7ea
+  - path: agent/runtime/vmguest/transfer.go
+    sha256: 6f595b6955275b0bcfbcc6a334dab9a419197a21ba43fed5597e54a5c2c911ae
+  - path: go.mod
+    sha256: cd6e6ef19641e677861fba54a52320a8c804f1487d92df1318d6c3b2ecaed504
+- id: guestweave-macos
+  repository: weaveplatform/guestweave-cli-macos
+  revision: f77fdaafd218cfa55b12dc1d4e814d4e2d874e46
+  baseline: main
+  visibility: private
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/httpapi/server.go
+    sha256: 566ebcb22b6f20b41002d3394272485cff908445d6463b46454cb1e53c668582
+  - path: internal/httpapi/router_schema_test.go
+    sha256: 921fa7681ad0dd567056681a20a09dd3dc6c2f38433c44cef5339d264a153faa
+  - path: internal/httpapi/schema/openapi.yaml
+    sha256: 2ac5f20c2acf317b8da426f83c3c75decbbeb96504805ee2d90b1d677325d867
+  - path: go.mod
+    sha256: 40fbfb0b50feab9bd800a224aa0dd3a0f9ffe1a0b62f73f8361af49bffe500e4
+  - path: main.go
+    sha256: ca08ebb110dbaee3145fdcc30e99eec2c4acfffdb80e41b06f9a4650268a9a39
+  - path: internal/cli/root.go
+    sha256: 18bf935040c9c83738dc3b05445674fc5f22cad1334b7ef44d9ef4ae40098c52
+  - path: internal/cli/serve.go
+    sha256: ea4a955bf27e419bb126996f1e330e400025e9fd02f8c2452b16c35a1387f469
+  - path: internal/cli/stop.go
+    sha256: 1371fd77dde6bb8f911309941ba747f9bf7714957184d41b36f079d317a310c9
+  - path: internal/serve/serve.go
+    sha256: 74f5788c39305f1caf3e3852c57f683f5f0766b446de0fcd87d8e4e0bcfa7096
+  - path: internal/httpapi/vms.go
+    sha256: f85678d3d0d6d1a5131567175626ef46ec36d62277671fa324bcf90bcd1fba7c
+  - path: internal/httpapi/guest.go
+    sha256: 4e0c148456161783ba3cde92c5724c99a10cec36269780bdd9db308cbb5a8c64
+  - path: internal/httpapi/ws.go
+    sha256: 154f0e1537b7c9761780028687a692bf5caeb3107dd137570c60cffdb1758a36
+  - path: internal/mcp/server_mcp.go
+    sha256: c69e9281169a2eff4d69f649a637deac09de6676648ec1dde516ab07d0ff78dc
+  - path: internal/vm/service/service.go
+    sha256: 97a8a4724976654fa1b9c153ab7a9ed33d0671eca979dff03f4ee360ca8c96e6
+  - path: internal/vm/run/session.go
+    sha256: 4c09cb590a9e8f764ee83dddce646317b22c7bd94dc6fdea8bcae2398335bc6a
+  - path: internal/vm/run/windows.go
+    sha256: dc0028244cbbabe26018662556a7ba3029d1a14b6a5bac1b9c9960a370835235
+  - path: internal/vm/run/guestchannel.go
+    sha256: 6b759e3ff07f75281c26eb8de384dc54fbee9a596d0ab5017b2a166d229c1ab5
+  - path: internal/vm/run/clipboard.go
+    sha256: b88ec5f8ee37bd07381983f31373cf3f1ab7f80de1ccc23f75ba8be2e6768775
+  - path: internal/vm/run/firstboot.go
+    sha256: 6d977ee335cec655ba9cee73ec035251742beabe6ab985d01daab1d2b62b3a87
+  - path: internal/vm/guestctl/socket.go
+    sha256: e3c675c39f1b2254a50fb2bc896a93c4155f94830011e4ea657519149880a07e
+  - path: internal/vm/guestagent/packages.go
+    sha256: ad77d7fea53c840a60e8826bb3394dcbb1cc259f0e00212ebcc5cfe255a42582
+  - path: internal/vm/guestagent/windows.go
+    sha256: e2e8ff4561e04908a65bdebd84869913e6220ebec84e994eb88b59345ce48e10
+  - path: internal/vm/guestagent/install.go
+    sha256: d4d67cae0e84c1ebe8193eaba3407403c18b287164e3bb3d33050cabffcc6468
+  - path: internal/vm/guestagent/resident.go
+    sha256: 2868c7cb7055f4ae08eec31c1c1c45bc0c652d9c47cdb49671ee22dcb1389b05
+  - path: internal/vm/channelkey/channelkey.go
+    sha256: a301072394771d9d24fa56d5f40085e0083b4c078d92e997de4d1f59fde3052c
+  - path: internal/vm/layout/layout.go
+    sha256: 7b7c2bd9bd2cfec9bf78f27bd4ecfc23562aee8613327570e50e51c7e5453a96
+  - path: internal/hypervisor/hypervisor.go
+    sha256: ada7a8dd2d9d5e2be77591c49c9a4562e2d33448ccafd4a91fd93beef7c8f2da
+  - path: internal/hypervisor/bootfirmware.go
+    sha256: 02e7521e0053debd9b6f35ecbfc23b39837a97a6e4f8f93b8a0046a598014721
+  - path: internal/hypervisor/netbackend.go
+    sha256: 6672eda9419c87dab4fb8c85300f4bc5a01cad3bf5a72723b719f3612cb3df34
+  - path: internal/hypervisor/hardware/net/softnet.go
+    sha256: aa4e69f7e3ed9071e777ce28ff7c763bff0ed685c52383929e397c631a86cb17
+  - path: internal/network/network_shared.go
+    sha256: 9c0bbc3f4e2ce913a3c93f6187da2bff72cbace71d9c249483597a0b55d064fc
+  - path: internal/config/config.go
+    sha256: 926147af40c4a97f51c436aa1a6bb7aa3472f53da200a258509da10826a3d263
+  - path: internal/command/commands_exec.go
+    sha256: da2b99a668903e20717d36b027a84f9d15a66b1d4778acb11534a69cdfc5c5da
+  - path: internal/command/commands_stop.go
+    sha256: fccd19d3879181ef3857fe07286af5ab1c6b323af240a44fed4a07b58282b1e1
+  - path: internal/command/commands_shutdown.go
+    sha256: 50b3af519e11a88fe82146a659ac1dc5a2cdafb4a3582a2ceba6d8d9a7e239e2
+  - path: internal/command/commands_restart.go
+    sha256: cde3456cbe41afa165fdcbc75fccff42184ab600aa5181c765381da0bdbf58b2
+  - path: internal/command/commands_clone.go
+    sha256: e8fa3ad74be10d8d9849fca3d55817d8d3488082a047f6a06625645089a592a0
+  - path: internal/command/commands_push.go
+    sha256: 01794e9ac34ace49d6f66f6e96122ad2207f3f4024060c6486f2e957cf588ba8
+  - path: internal/imagesource/oci/registry.go
+    sha256: f6f0676a690cad5581a6623219724f743473d988105e0f6003a7dc5a68ff29fe
+  - path: internal/imagesource/oci/base.go
+    sha256: bed00c4814d0875914c50a60b6a536c8d2ede1eff7f4fec6146f4b6732f94750
+  - path: internal/imagesource/oci/push.go
+    sha256: c79064920e528d4003b9e924cafcebf40d6c3027d3df89f8df149cc9b2c7f389
+  - path: internal/imagesource/oci/profile.go
+    sha256: 1d59935e5294c705115e0c32e7b3a90bc658c70f95111c62406a1b62070cf442
+  - path: internal/ssh/sshclient.go
+    sha256: ee7179377ebdc8295b272a03d3de9b0007970a261f8bb25da43ab55573a32f7a
+- id: guestweave-windows
+  repository: weaveplatform/guestweave-cli-windows
+  revision: 48fe4242d4d8b884e1bc464287f9a6c8f72ca275
+  baseline: main
+  visibility: private
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/serve/http.go
+    sha256: 599b3b3947b0db9dcbba14cc927738ab2396339d705b03533b8cccb0f0cfdc36
+  - path: internal/serve/openapi.json
+    sha256: 9ea7abeb8a4d7b4c9e02a969889d453698caaa53ba4a80aa8c4546ec751fdbee
+  - path: internal/serve/openapi_test.go
+    sha256: ae0efe7512882d54679bf4eae270b11d7d7c175193ad0def35ee3e8398300add
+  - path: internal/oci/oci.go
+    sha256: c79db35d029653ab9c855506341df4ffa41b7be68436b8a3b1c761e7e6576101
+  - path: go.mod
+    sha256: 01fb749536faf3fee2062b2157c64c437ed559e0bf9bc22df6cf8b8136dd9007
+  - path: internal/command/command.go
+    sha256: 9380c6fc16e9979eda495ae64a5f9e8bf2b2ec5d93c101ee285c1dd5377618b4
+  - path: internal/command/commands_create.go
+    sha256: 1a973463c2f61743cb52a6f0d116d641cdff89aa013b1406839afb808f296bf9
+  - path: internal/command/commands_run.go
+    sha256: 2935fcb46baf63f4a43e1d4cfed2db522b5da25a63488d1b25dba56003e0a600
+  - path: internal/command/commands_exec.go
+    sha256: 6cd756ca92922c2bc2ec0048b1d84e7b93e8ac97b97898c99a3d858c300fbd2e
+  - path: internal/command/commands_agent.go
+    sha256: d1df19858bc764578f1cff142f10e316946ed07401e2afdad14e1ba10a776e4a
+  - path: internal/command/commands_oci.go
+    sha256: 3250a4b4d3262fe9ed3101dc34d2e0dfc40351975af4b2b988c2531aab750886
+  - path: internal/command/run_clipboard.go
+    sha256: a3b02d4f598c2db7d22bbe55ac6b2a024f06abcd90502f53266d8a6c8f872ada
+  - path: internal/hcs/engine.go
+    sha256: 4d4ef579cec742f51414c40633b3290ac01a9313084014ed9014f4136a3cac6d
+  - path: internal/hcs/native.go
+    sha256: acaecbc72f5473a8239ea87d1cdc93bcb053684878ccee33585622c1de8f440c
+  - path: internal/hcs/bridge.go
+    sha256: 980faf0423a373ff4f107d0b2d1eb7e507f91fbaa96bc070da421fc9041fae16
+  - path: internal/hcs/netmodes.go
+    sha256: d858498cddc35717e5f22cdc5cf8d44c5dabf84da8bbb2a58970d3af1f5bd2cf
+  - path: internal/hcs/snapshot.go
+    sha256: 247eaa9ec4fccd583a0aab672141d40c2a0a92995221757484152ea8dbabb558
+  - path: internal/vm/config/config.go
+    sha256: 70f948f5bb1213dbe5ec974634af0c1457832b641e205dc43958df6f66bc2f80
+  - path: internal/vm/layout/layout.go
+    sha256: 5eb209a904ad75769304b70258c65603c22a57b2d71f2eb75082633bf5891457
+  - path: internal/guestweaveagent/client/client.go
+    sha256: 1fd552c2e13e280b5e0f394911ec3fe3d02c1cdcdd0426cf54558dde2ca2a29c
+  - path: internal/guestweaveagent/client/install.go
+    sha256: 815ad270ed597c432e2de2bb501525c322cdbad9805f00762bfa7c267ddafdfd
+  - path: internal/guestweaveagent/proto/proto.go
+    sha256: f56ebcca0372bea6fd68ed38348809002b19654689535cc3047419d8657a5bdb
+  - path: internal/guestweaveagent/agent/agent.go
+    sha256: dbb6e0c22d6deb8303861cdaa4c37620f468f0be4109ad99a777408a4875a83b
+  - path: cmd/weaveagent/main.go
+    sha256: 522389ebae5d20ed2621dc2ec92978886d15047af09e5c85917edd0b54239fc7
+  - path: cmd/weaveagent/modulebus.go
+    sha256: d2b1409111e5f1020503960050382cd03ce1d162bd6b2952817fdd19979230c0
+  - path: cmd/weaveguestd/main.go
+    sha256: ce74994e218cda0f6815d652fc92819b383e55efd4fbe04ef9d53f97a127b59b
+  - path: cmd/weave-gui/main.go
+    sha256: be3bb52ae9a165f3e36a3cb1f223acbdeb8d5fab014538e118be4febfec142ff
+  - path: internal/nativebuild/nativebuild.go
+    sha256: f8a13d8dcdd102d945b4e401101b9fcc600f42b6e50958fe9025e6fee5b1d9d3
+  - path: internal/nativebuild/assets/weave-agent
+    sha256: b9fde96a97c2099635264e9efc0daa846bc0c57f40255b25956ba476f94a1ff5
+  - path: internal/guestimage/manifest.go
+    sha256: 6aaab5dfddaee4fbd6c99a37253361dc6123f0a66696091dabe16a2c6e6ab1c6
+  - path: internal/cli/serve.go
+    sha256: 6497233f59396a8268a3e3cafa8a90e092fb4a3d9c52239b0d8422a7c31c8cf4
+  - path: internal/serve/auth.go
+    sha256: 63789f3928fb3cd8512d94981d1f5a2aed6ac04496129b0bef6ce49cc1aa19d3
+  - path: internal/serve/mcp.go
+    sha256: 98e60253180eff8442e1fdd8d0f323ffd083f599991a8edaf4ea77b2ccbf88f3
+  - path: internal/serve/vmcreate.go
+    sha256: a1e4bdbb7415c2a32615e855eb9934aa44f6fd8a5831dc5619346335fb1907f3
+  - path: internal/cli/root.go
+    sha256: 596a4cc16ff13078c29849ddaf95d2fc0d5547e653515bd610b25c54100f8a92
+- id: imageweave
+  repository: weaveplatform/imageweave
+  revision: 3f81345846d7c64bc1b9c5f8f38949a02ca462c5
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: internal/cli/root.go
+    sha256: 745665dbc2496ac7350f9d5fd842bf143b3f8ab6ab4af0f9327f8576d172fb68
+  - path: pkg/plan/plan.go
+    sha256: 39a6fd3b0755493cecac33cfa28e5e0f2fefee4e61371323c49ea223a2b87bc6
+  - path: pkg/delivery/native.go
+    sha256: 348d9fd6dc4b319213c6e344ee0e1fe95de11e12ed2cca6059612cfb8081d536
+  - path: pkg/delivery/build.go
+    sha256: 8a52f879f4d1b4ddf061f85e7da002bd46603decf7ea1fa013b37cd914decffe
+  - path: internal/packerplugin/builder.go
+    sha256: 72faae6e93da153a31f4b1e4782aa1076383d1a12e36db11dc9f4d18a3f2e0f4
+  - path: go.mod
+    sha256: 234011f24a7d60fad0e4a74b7776f7649c3a778803db208d0dcc119850d39b24
+  - path: internal/cli/image.go
+    sha256: 162e3b3390bdb266a0b087b2e868caad81c7d4cf66f8fdc7d750456e912c6865
+  - path: internal/cli/delivery.go
+    sha256: ada22d105a912c9e3130b72f88be4426f83f43beec6dd5b055e879fc465a451c
+  - path: pkg/catalog/catalog.go
+    sha256: bb7ed57c1cfc3681ed1e13671d32258fd97937e890408b93cc4922f3ad2caefe
+  - path: pkg/plan/prepared.go
+    sha256: f093142519f404ae30bc64b7a188dbf13a8ec980a38bc0923951f30bad6a4584
+  - path: internal/packerplugin/prepared.go
+    sha256: 4ddcc27f5ddfa01fdeb4c448390a60896e4d14bfc281070aec569a0b4927b703
+  - path: pkg/nativebuild/build.go
+    sha256: 95d8596539446ebc8cf9bdd98b05068266c870d2937078781e1bede64a284037
+  - path: pkg/macosbuild/build.go
+    sha256: 6bcc8f472227ecdbe13e97236ebcf75921616aab13cbc7fbe63d09ba04b30a60
+  - path: pkg/macosbuild/tools.go
+    sha256: 1777b5e111bdd77fc5c0426042d1187046cb2e25d3eb2957020b51fa7b288962
+  - path: internal/imagebuild/catalogue.go
+    sha256: 6c4e2c565040babd51ee580f4ae0e263671660e8c9d1623b4400c48d0bd88d75
+  - path: internal/imagebuild/packages.go
+    sha256: 8975c1281f4f08c33ecf377d759c2bccd1c4067506a5f9b431f2c8f68a6b9dae
+  - path: images/catalogue.json
+    sha256: b25b4f8b893b78354bce2eb2b5182363aa498343642525d9e9c16e36935feee8
+  - path: images/packages.lock.json
+    sha256: 4e85e11b4dd4efd5392505fd5cca8bd61408f321f21ea2c80ddf6f9895f08395
+  - path: internal/imagebuild/macos/prepared.go
+    sha256: 731fe08167c969d92da45b472ac6e0410dbdb377e7166f27d73c3bfb1a2cdf1b
+  - path: internal/imagebuild/macos/acceptance.go
+    sha256: a3cf9f9c04dd8652fa136b69bc32f573df9c8fd1a590b8fc99e0296d4262ea8c
+  - path: internal/imagebuild/macos/recipe.go
+    sha256: 6337a114ab19232f6a23e336eb12e215c80486a94557760a28b065f043bb9396
+  - path: internal/imagebuild/macos/machine_darwin.go
+    sha256: 845b9593df7961cb7d770fdbfdded0af782ba0e8fb50df3d3317d5d17c380ad1
+  - path: internal/imagebuild/linux/linux.go
+    sha256: 2e2fbac930d592c71bf308f44d22a427068ec026bd926a67e60b6993d88331ee
+  - path: internal/imagebuild/linux/linux_agent_check.go
+    sha256: e31b1c0ab8b83080e1678110f71fb3f1089bc77805264764b1cb702d81f84a75
+  - path: internal/imagebuild/windows/windows_agent.go
+    sha256: f3c62d3eb40a580022dd4b3fe805ca3d3464ea1b06c08faacf13a2644bb1350c
+  - path: internal/imagebuild/windows/recipe.go
+    sha256: efecb99673a93136ff446e87d293b904e6499f185e271d21d60f817f941622f7
+  - path: internal/imagebuild/export.go
+    sha256: 6cb3648df15ff9db6974247e4a0ad2f5b7a614291b5c217c7872a11b8c17cdc7
+  - path: .github/workflows/image-native-candidate.yml
+    sha256: 0589caae91afb535e0a3ba54fddc96969cc9a3956e31edee99514a44c84057c1
+  - path: .github/workflows/macos-candidate.yml
+    sha256: c64a39c1a9a48f3958ba12ba94dec2dfb98ea937e8cfda4043ea7a4133c08a4e
+  - path: .github/actions/publish-macos-candidate/action.yml
+    sha256: 428162d2271cb6964d8570742a8df45d8efc3c58af90b4ddbd563dcd450302e5
+  - path: delivery/macos-candidate-policy.json
+    sha256: 1743b676720cef6d4f037b80fc4748e5f02cccf163bc23406baf2e7b69c005e8
+- id: oci
+  repository: weaveplatform/weaveplatform-oci
+  revision: 2f088490822cf14a5e9b6824bffe07e932753715
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: pkg/spec/mediatypes.go
+    sha256: 08b3fabc8d6506900e4a498a6545a2176fd8662bed1706723d59915b5eed900d
+  - path: pkg/spec/schema/vm-config-v1.schema.json
+    sha256: 282efcc29fa95088657526a56cd9620f505722145f516d446fb1f5f4635489d1
+    snapshot: sources/contracts/oci/pkg/spec/schema/vm-config-v1.schema.json
+- id: channels
+  repository: weaveplatform/weaveplatform-release-channels
+  revision: e5f1f46c740ca8a2ca7c801fe266a58c2974cd71
+  baseline: main
+  visibility: public
+  verified_at: '2026-10-11'
+  files:
+  - path: .github/agent-core-version
+    sha256: 4a2ab469c4bbaf7cbc98e6f8601e0e1e3c3832e74d2eac6038863c8a337814a3
+  - path: .github/workflows/quality-gate.yml
+    sha256: 5709155d9806a8fe18f1944f22b5b524848c4531e3021a3639bacf072d4345c6
+  - path: scripts/promote.sh
+    sha256: c48cef42906e0242814e5c237277a4e55f4222f736573ed7817a938cf95fd22c
+  - path: channels/stable.json
+    sha256: ae05c046a36f79df4ae8b812b9649c1a844ad412dac3004ec43f10f2aeb2c500
+  - path: .github/workflows/promote.yml
+    sha256: 800d6453a46769d5c7f74960f6666f69d5342db47842ef5465cc3d760102d30d
+- id: guestweave-windows-development
+  repository: weaveplatform/guestweave-cli-windows
+  revision: 651ec7d5d0459ece11526c5ee34e0774bc6d2f52
+  baseline: feat/weave-agent-handover-168
+  visibility: private
+  verified_at: 2026-10-11
+  files:
+  - path: go.mod
+    sha256: 732d043fa11fbc9b82af0adddf66c825ddee5672ca18f299025b7875bc1c5db7
+  - path: internal/command/run_channel.go
+    sha256: ec81063cd5852c695127309944084e500865750602d4230fbbd8b72060fb32be
+  - path: internal/command/commands_exec.go
+    sha256: ecdd64c0549cafabb9bf88fe699f431e8f308ebcf7fe3eff5ca6109846ee9e33
+  - path: internal/cli/root.go
+    sha256: 5e8471c6331d7390d23e27c35941df6b570f08b93a077300d0b4837e728015c0
+  - path: internal/cli/exec.go
+    sha256: ff8e872881e572682a97f810cedc59137ad806b028f072c9c711e8a7996815d4
+  - path: internal/cli/stop.go
+    sha256: a5d2cccc1cad659170d581e092af2fff8ddb5704d77fe02d751e0cef38ed7cab
+  - path: internal/command/commands_create.go
+    sha256: 4109edef21165d31718c5962a6c874a51b967d1874f0f1764a5c4045612eac39
+  - path: internal/command/commands_run.go
+    sha256: 02bb426255a222c6793ecb7c790d22ae2ffb601ee267bf0c38375848d010d4bc
+  - path: internal/command/run_detached.go
+    sha256: 1a8407e55363b61536483484d3a62758440db1edae11c8c168c12a5607766baf
+  - path: internal/command/run_guest.go
+    sha256: 085cc3acdd7c4fef01ca87e2da2ebad048701fedb9faab74ccb14258c66d9e98
+  - path: internal/command/run_bootstrap.go
+    sha256: 1348f9b05abc7268fce64527b7e8bda0fc10c010b39a4465381913c6d4725829
+  - path: internal/command/run_upgrade.go
+    sha256: e11584aa8a7ae00be6b7e5178f1319c8ae715d1520bb96679e9c34e09b8f0b9f
+  - path: internal/command/run_network.go
+    sha256: aa2dceaab5803861370f5807970abef7d24bf03aca037661ea9a27a1ec6fedb3
+  - path: internal/command/run_clipboard.go
+    sha256: 4109fd938a001ec94afbb25ae8bfc43a511d1607cccb703e1b73939fbe008e90
+  - path: internal/command/run_clipboard_guest.go
+    sha256: 0cd7ce5ffab3baea833f4c7997f91effd0596ade2ddf7a219981c939e87f35b0
+  - path: internal/command/exec_result.go
+    sha256: 61e46df559e215676bd17f6f81b3923ef0db9f45fa5cc7a4d2364d02376a7565
+  - path: internal/command/commands_modules.go
+    sha256: 15cf28f8d905357cc4ec0971cdb62ca09160c9b2c790d16aac6f6ba6b6bf2106
+  - path: internal/command/commands_stop.go
+    sha256: 5bb8b077fb270fc0a8081365510cf7d3ff14ecf9a252f12178b5f39a757a9eeb
+  - path: internal/command/commands_shutdown.go
+    sha256: b4d6f4d60b1ea0f28dfd6c5050f6eede126653dca7af2a833ac65fd31d485821
+  - path: internal/command/commands_restart.go
+    sha256: e0134b771f40c83d68aee5ad874821869fc762226dc67b5ec9b6e034c630ce9b
+  - path: internal/command/commands_clone.go
+    sha256: 5a9c1546b979ef07e37ffe3c9d693975e95b39d0bb017e2eaec35524fcb34524
+  - path: internal/command/commands_seal.go
+    sha256: 927980d7dd98220b8d876072f7aca6c59aa12a33bd1f13db37e3f4f654e9d0f3
+  - path: internal/command/seal_linux_script.go
+    sha256: 06788a126aa46fd7c0852b03a88de546649130c453d80e585e639b03b78e94e6
+  - path: internal/command/seal_windows_script.go
+    sha256: fb65e0597910e87a0043c73048bb785d682dc06642a9df63e0433b6ab21dd9b9
+  - path: internal/command/commands_oci.go
+    sha256: 3250a4b4d3262fe9ed3101dc34d2e0dfc40351975af4b2b988c2531aab750886
+  - path: internal/command/commands_import.go
+    sha256: 0ac96be54085b93befca0abf87f161585e7dbfabb610f92bc78d2e1f493068d8
+  - path: internal/guestchannel/channel.go
+    sha256: 6c7fdd91b2bd0e690d9bbcb0623a3879bfeb79bbd7a6568c922d7fa5c0c5c6b0
+  - path: internal/guestchannel/dial_windows.go
+    sha256: 339699090bc47f8f418c17431d5155206bf205376035b12c0c2d60e53ef1c1ce
+  - path: internal/vm/guestctl/socket.go
+    sha256: fd46b1545d8151b74163df4e5cd0738e33ee3f0c89e03742b219c5e22e82ea67
+  - path: internal/vm/guestctl/exec.go
+    sha256: df9b08398a80c5fe8849f3237a8c44df9df92341f9fafbd3977988fe0c931601
+  - path: internal/vm/channelkey/channelkey.go
+    sha256: a3d122924c7e02a30ff1bdfe6a2852258ebf5e6036bdbde1538a8c6c6d628a57
+  - path: internal/vm/channelkey/private_windows.go
+    sha256: dc38fe865349b45a89bbda37461fdd47fafda9b589bf55da57ceec2d682bae9d
+  - path: internal/vm/channelkey/trust.go
+    sha256: 38d27e5d927f2c8e7cfd2392a81c2507b0b53b84e6d2659397a54aad02677f0f
+  - path: internal/vm/guestagent/releases.go
+    sha256: cb6bce4cad09d1a5823c19cd6de620ef5827ac1cd7a52a0d34945ca7ddad5081
+  - path: internal/vm/guestagent/packages.go
+    sha256: f74815289289670d18c6774d5f02fbd783b8087051d1739de4ac00e9d97cd079
+  - path: internal/vm/guestagent/download.go
+    sha256: 5fd45cc3fbef9db95363da5cb15b9495bd64f535e8655a5947965a543250736e
+  - path: internal/vm/guestagent/signature.go
+    sha256: 73d3e9b9f0a359583df3d2db4da1b8bcd6898bf3779f48f756cf9da39c4d4fa7
+  - path: internal/vm/guestagent/windows.go
+    sha256: 7b74e45a255e983849011eeaee713856dd6a366bd497ab80adc1c151ccb3f537
+  - path: internal/vm/guestagent/authenticode_windows.go
+    sha256: ae38854965ee32ec5e7e79e3e2606661ee42cd7a8498e34da234f6e8bdc4b12d
+  - path: internal/provmedia/seed_windows.go
+    sha256: 403c8f146d33858fd0f1729ec47bf883757d9f33bc347db6e9d9571e91107cb9
+  - path: internal/nativebuild/nativebuild.go
+    sha256: 563276c17cec0c85ec03b8221a12f2d208ec956ce17c2baa65755e0aa7ec8113
+  - path: internal/nativebuild/scripts/build-weave-rootfs.sh
+    sha256: b2d5b14c5c125a167a13b0a21379b7a4db4cd752c0043e17a0f69cf32a99210c
+  - path: internal/hcs/engine.go
+    sha256: f3fc0eb226408a0f92290e0bcb30d039cfabf7e0d40146d092c3ff37923376d6
+  - path: internal/hcs/native.go
+    sha256: 00e045116d4e42c729b29ecf1ade8150ada7d51d0e1cf80bfea7869e502b80fb
+  - path: internal/linuxmedia/ubuntu-desktop.yaml
+    sha256: faa0e2d6e0370659b417000b3e17e9d237afc1bd3421f5e57111e88264791e81
+  - path: internal/winmedia/sidecar.go
+    sha256: 850ee42a6cac5d495c32cb3713ee58011a6b2c28018e0228009e8f12780bea18
+  - path: internal/serve/http.go
+    sha256: e5ab6ba2fdfe9e866b345ccfba371217a5574ea56fbd871d94c28eafbba260d8
+  - path: internal/serve/auth.go
+    sha256: 63789f3928fb3cd8512d94981d1f5a2aed6ac04496129b0bef6ce49cc1aa19d3
+  - path: internal/serve/vmcreate.go
+    sha256: f100e471458bbdc9fee193a989a87c0fa8965ec40d1ef8da7685dd781cac66f4
+  - path: internal/serve/mcp.go
+    sha256: 23b611cc0c0a50aefcdd23b8039643e09c9bf37c4f70a89958584be937ec26a8
+  - path: internal/oci/oci.go
+    sha256: c79db35d029653ab9c855506341df4ffa41b7be68436b8a3b1c761e7e6576101
+- id: agent-modules-sdk-027
+  repository: weaveplatform/weaveplatform-agent-modules
+  revision: 0a61d653a0fd80e3befcb0b65d6b52171d36aad4
+  baseline: sdk/v0.2.7
+  visibility: public
+  verified_at: 2026-10-11
+  files:
+  - path: sdk/protocol/hvchannel/modules.go
+    sha256: 69dbbae0721379aa06de45c0bacac72b6a89c33df47f909d758dba5748a9c0d9
+  - path: sdk/weaveclient/auth.go
+    sha256: 430ca5642c87f97881a116ae6e73bc79dde3b591fc3bfca30cd29a72d63dea1c

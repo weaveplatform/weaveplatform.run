@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GuestWeave Windows: development handover",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [1390, 760]
+  },
+  "components": [
+    {"id": "operation-callers", "type": "external", "label": "Users and integrations", "sublabel": "CLI · REST · MCP stdio", "pos": [40, 150], "size": [240, 92]},
+    {"id": "run-supervisor", "type": "backend", "label": "Run supervisor", "sublabel": "Owner-only guestctl pipe", "pos": [390, 150], "size": [240, 92]},
+    {"id": "sdk-session", "type": "security", "label": "Host SDK session", "sublabel": "weaveclient · per-VM Ed25519", "pos": [740, 150], "size": [240, 92]},
+    {"id": "guest-core", "type": "backend", "label": "Guest agent core", "sublabel": "Service inside Linux / Windows", "pos": [1090, 150], "size": [240, 92]},
+    {"id": "release-assets", "type": "external", "label": "Release assets", "sublabel": "Core + eight OS modules", "pos": [40, 460], "size": [240, 92]},
+    {"id": "vm-state", "type": "database", "label": "VM store and payloads", "sublabel": "Disks · keys · trust · seeds", "pos": [390, 460], "size": [240, 92]},
+    {"id": "windows-runtime", "type": "backend", "label": "Windows HCS / HCN", "sublabel": "Guest compute and networks", "pos": [740, 460], "size": [240, 92]},
+    {"id": "guest-module-processes", "type": "backend", "label": "Capability modules", "sublabel": "Separate guest executables", "pos": [1090, 460], "size": [240, 92]}
+  ],
+  "boundaries": [
+    {"kind": "region", "label": "Physical Windows host", "wraps": ["run-supervisor", "sdk-session", "vm-state", "windows-runtime"], "pad": 26},
+    {"kind": "region", "label": "Guest operating system", "wraps": ["guest-core", "guest-module-processes"], "pad": 26}
+  ],
+  "connections": [
+    {"id": "request-owner", "from": "operation-callers", "to": "run-supervisor", "label": "Guest operations"},
+    {"id": "invoke-sdk", "from": "run-supervisor", "to": "sdk-session", "label": "SDK calls"},
+    {"id": "authenticate-core", "from": "sdk-session", "to": "guest-core", "label": "HvSocket 2010", "variant": "security"},
+    {"id": "supervise-modules", "from": "guest-core", "to": "guest-module-processes", "label": "Local gRPC", "labelDy": 24},
+    {"id": "persist-host-state", "from": "run-supervisor", "to": "vm-state", "label": "Persist state", "labelDy": 24},
+    {"id": "manage-runtime", "from": "run-supervisor", "to": "windows-runtime", "label": "Boot / lifecycle"},
+    {"id": "acquire-payloads", "from": "release-assets", "to": "vm-state", "label": "Fetch / verify"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Trust provisioning", "items": ["CIDATA / WEAVEPROV supplies the public key out of band.", "The private key stays on the physical Windows host."]},
+    {"dot": "emerald", "title": "Process composition", "items": ["Host links SDK v0.2.7; guest core owns module lifecycle.", "Legacy bundled agents and their local bus are removed."]},
+    {"dot": "amber", "title": "Development boundary", "items": ["PR170 source inspection does not prove runtime acceptance.", "The HostWeave capabilities command is still absent."]}
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Documentation ownership and publication",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      720
+    ]
+  },
+  "components": [
+    {
+      "id": "public-source",
+      "type": "database",
+      "label": "weaveplatform.run",
+      "sublabel": "Public knowledge source",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "public-build",
+      "type": "backend",
+      "label": "Public build",
+      "sublabel": "Pinned docs-kit and evidence",
+      "pos": [
+        480,
+        150
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "public-pages",
+      "type": "cloud",
+      "label": "Public Pages",
+      "sublabel": "weaveplatform.run",
+      "pos": [
+        940,
+        150
+      ],
+      "size": [
+        250,
+        84
+      ]
+    },
+    {
+      "id": "private-source",
+      "type": "database",
+      "label": "weaveplatform.dev",
+      "sublabel": "Private evidence and operations",
+      "pos": [
+        40,
+        420
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "private-build",
+      "type": "backend",
+      "label": "Internal build",
+      "sublabel": "Same pinned docs-kit",
+      "pos": [
+        480,
+        420
+      ],
+      "size": [
+        230,
+        84
+      ]
+    },
+    {
+      "id": "private-pages",
+      "type": "security",
+      "label": "Pages with Access",
+      "sublabel": "weaveplatform.dev",
+      "pos": [
+        940,
+        420
+      ],
+      "size": [
+        250,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "public-source",
+      "to": "public-build",
+      "label": "Review and build"
+    },
+    {
+      "from": "public-build",
+      "to": "public-pages",
+      "label": "Direct Upload"
+    },
+    {
+      "from": "private-source",
+      "to": "private-build",
+      "label": "Review and build"
+    },
+    {
+      "from": "private-build",
+      "to": "private-pages",
+      "label": "Protected upload",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Shared tooling",
+      "items": [
+        "Theme and components are released upstream in weaveplatform.run."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Publication boundary",
+      "items": [
+        "Internal hosts require Access before confidential content is uploaded."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Hosting status",
+      "items": [
+        "Local builds are verified; Cloudflare setup is still pending."
+      ]
+    }
+  ]
+}

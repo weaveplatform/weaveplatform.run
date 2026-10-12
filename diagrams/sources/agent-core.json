@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agent core inside the guest",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      780
+    ]
+  },
+  "components": [
+    {
+      "id": "hostclient",
+      "type": "external",
+      "label": "GuestWeave SDK client",
+      "sublabel": "Physical host owns stream",
+      "pos": [
+        40,
+        160
+      ],
+      "size": [
+        250,
+        90
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "weave-agent core",
+      "sublabel": "Registry + channel router",
+      "pos": [
+        530,
+        160
+      ],
+      "size": [
+        250,
+        90
+      ]
+    },
+    {
+      "id": "module",
+      "type": "backend",
+      "label": "Capability process",
+      "sublabel": "OS-specific module backend",
+      "pos": [
+        1050,
+        160
+      ],
+      "size": [
+        270,
+        90
+      ]
+    },
+    {
+      "id": "services",
+      "type": "security",
+      "label": "Module host services",
+      "sublabel": "Core-owned local RPC server",
+      "pos": [
+        1050,
+        450
+      ],
+      "size": [
+        270,
+        90
+      ]
+    },
+    {
+      "id": "boot",
+      "type": "backend",
+      "label": "weaveboot",
+      "sublabel": "Core selection + crash recovery",
+      "pos": [
+        530,
+        450
+      ],
+      "size": [
+        250,
+        90
+      ]
+    },
+    {
+      "id": "manager",
+      "type": "external",
+      "label": "Guest service manager",
+      "sublabel": "launchd, systemd or SCM",
+      "pos": [
+        530,
+        620
+      ],
+      "size": [
+        250,
+        90
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Guest / device operating system",
+      "wraps": [
+        "core",
+        "module",
+        "services",
+        "boot",
+        "manager"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "hostclient",
+      "to": "core",
+      "label": "Authenticated frames",
+      "variant": "security"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "label": "Lifecycle + delivery",
+      "variant": "emphasis"
+    },
+    {
+      "from": "module",
+      "to": "services",
+      "label": "Token RPC",
+      "labelDy": 24
+    },
+    {
+      "from": "manager",
+      "to": "boot",
+      "label": "Start service"
+    },
+    {
+      "from": "boot",
+      "to": "core",
+      "label": "Supervise"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Ownership",
+      "items": [
+        "Host services live in core inside the guest. Each capability runs as its own process."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Separate trust",
+      "items": [
+        "Channel host keys, local launch tokens and release verification govern different boundaries."
+      ]
+    }
+  ]
+}

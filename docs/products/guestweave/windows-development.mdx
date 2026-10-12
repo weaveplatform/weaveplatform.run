@@ -1,0 +1,161 @@
+---
+title: 'GuestWeave Windows development: agent handover HLD'
+description: The PR170 SDK/core/modules migration, provisioning and lifecycle boundaries, and remaining compatibility gaps.
+product: guestweave
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- guestweave-windows-development:go.mod
+- guestweave-windows-development:internal/cli/root.go
+- guestweave-windows-development:internal/cli/exec.go
+- guestweave-windows-development:internal/cli/stop.go
+- guestweave-windows-development:internal/command/commands_create.go
+- guestweave-windows-development:internal/command/commands_run.go
+- guestweave-windows-development:internal/command/run_detached.go
+- guestweave-windows-development:internal/command/run_channel.go
+- guestweave-windows-development:internal/command/run_guest.go
+- guestweave-windows-development:internal/command/run_bootstrap.go
+- guestweave-windows-development:internal/command/run_upgrade.go
+- guestweave-windows-development:internal/command/run_network.go
+- guestweave-windows-development:internal/command/run_clipboard.go
+- guestweave-windows-development:internal/command/run_clipboard_guest.go
+- guestweave-windows-development:internal/command/commands_exec.go
+- guestweave-windows-development:internal/command/exec_result.go
+- guestweave-windows-development:internal/command/commands_modules.go
+- guestweave-windows-development:internal/command/commands_stop.go
+- guestweave-windows-development:internal/command/commands_shutdown.go
+- guestweave-windows-development:internal/command/commands_restart.go
+- guestweave-windows-development:internal/command/commands_clone.go
+- guestweave-windows-development:internal/command/commands_seal.go
+- guestweave-windows-development:internal/command/seal_linux_script.go
+- guestweave-windows-development:internal/command/seal_windows_script.go
+- guestweave-windows-development:internal/command/commands_oci.go
+- guestweave-windows-development:internal/command/commands_import.go
+- guestweave-windows-development:internal/guestchannel/channel.go
+- guestweave-windows-development:internal/guestchannel/dial_windows.go
+- guestweave-windows-development:internal/vm/guestctl/socket.go
+- guestweave-windows-development:internal/vm/guestctl/exec.go
+- guestweave-windows-development:internal/vm/channelkey/channelkey.go
+- guestweave-windows-development:internal/vm/channelkey/private_windows.go
+- guestweave-windows-development:internal/vm/channelkey/trust.go
+- guestweave-windows-development:internal/vm/guestagent/releases.go
+- guestweave-windows-development:internal/vm/guestagent/packages.go
+- guestweave-windows-development:internal/vm/guestagent/download.go
+- guestweave-windows-development:internal/vm/guestagent/signature.go
+- guestweave-windows-development:internal/vm/guestagent/windows.go
+- guestweave-windows-development:internal/vm/guestagent/authenticode_windows.go
+- guestweave-windows-development:internal/provmedia/seed_windows.go
+- guestweave-windows-development:internal/nativebuild/nativebuild.go
+- guestweave-windows-development:internal/nativebuild/scripts/build-weave-rootfs.sh
+- guestweave-windows-development:internal/hcs/engine.go
+- guestweave-windows-development:internal/hcs/native.go
+- guestweave-windows-development:internal/linuxmedia/ubuntu-desktop.yaml
+- guestweave-windows-development:internal/winmedia/sidecar.go
+- guestweave-windows-development:internal/serve/http.go
+- guestweave-windows-development:internal/serve/auth.go
+- guestweave-windows-development:internal/serve/vmcreate.go
+- guestweave-windows-development:internal/serve/mcp.go
+- guestweave-windows-development:internal/oci/oci.go
+- agent-modules-sdk-027:sdk/protocol/hvchannel/modules.go
+- agent-core:proto/weave/agent/v1/module.proto
+- hostweave:agent/runtime/guestweave/capabilities.go
+- hostweave:agent/runtime/guestweave/guestweave.go
+---
+
+The Windows development branch replaces the repository-local guest agents with the shared agent SDK on the physical host and separately released core/module processes inside the guest. This establishes a different product relationship from the [Windows main HLD](windows.mdx).
+
+This page describes [PR170](https://github.com/weaveplatform/guestweave-cli-windows/pull/170), branch `feat/weave-agent-handover-168`, at immutable commit `651ec7d5d0459ece11526c5ee34e0774bc6d2f52`. The comparison baseline for main is `48fe4242d4d8b884e1bc464287f9a6c8f72ca275`. It records implementation inspected in this development snapshot; it does not establish merged, released or independently accepted behavior. Upstream validation narratives were not used as runtime evidence.
+
+<Diagram id="guestweave-windows-development" title="GuestWeave Windows: development handover">
+The Windows run supervisor owns an authenticated SDK session and the host control pipe. HCS/HvSocket connects that host client to guest core, which supervises separate capability module executables inside the guest. Public trust enters through provisioning media; the private key remains in the host VM store.
+</Diagram>
+
+## Composition changes
+
+| Boundary | Pinned main | PR170 development snapshot |
+| --- | --- | --- |
+| Host capability client | Repository-local guest bus client | Linked `agent-modules/sdk v0.2.7` and `weaveclient` |
+| Guest implementation | Linux `cmd/weaveagent` init/agent; Windows `cmd/weaveguestd` interactive clipboard daemon | Released guest core plus separate OS-specific module executables |
+| Capability transport | Repository-owned module/op envelopes and `weave-guestd/1` hello | SDK/core capability frames authenticated with a per-VM Ed25519 key |
+| Host supervision | Detached compute can outlive the initiating process | `--detach` spawns a separate run supervisor holding the VM lock and compute handle |
+| Exec | Bundled native Linux execution path | CLI, REST and MCP use the run supervisor's SDK exec path for Linux/Windows guests |
+| Legacy SSH agent commands | Caller-supplied binary installation/call/tools | Removed; SSH remains for explicit SSH access and delayed legacy bootstrap |
+| Native Linux boot | Embedded local agent as init or in an initrd | Ubuntu systemd rootfs with released core/modules; `init=/sbin/init` |
+
+The development tree removes `cmd/weaveagent`, `cmd/weaveguestd`, the local `internal/guestweaveagent` bus, its embedded native agent and the legacy `agent` command implementation. The SDK is a host library. Guest core and modules are installed guest processes; they are not libraries linked into GuestWeave. HCS remains the VM backend, and HCN/HNS remains responsible for host networking.
+
+The resolver selects eight OS-specific capability families: clipboard, display, exec, metrics, power, presence, session and time. Selection does not prove installation, an available interactive session or healthy operation. Host clipboard synchronization calls the SDK and reports the guest registry state; module delivery failures can distinguish a missing module, a stopped module and a missing console session.
+
+## Run ownership and lifecycle
+
+`runHCS` holds the VM mutation lock, starts the compute system and creates a run context, SDK channel and `guestctl` control server. It supervises unattended installation through poweroff and a fresh boot of the installed disk. The same supervisor owns clipboard synchronization and port forwards. Detached run starts another `weave run --supervisor --no-graphics` process, then waits up to 30 seconds for its control pipe to accept connections.
+
+That return condition is host control availability. It does not require successful guest authentication, an available exec module or a completed unattended install. `guestctl.Serve` treats a pipe-binding failure as best effort; the VM can run while its control verbs remain unavailable.
+
+The local control server uses a Windows named pipe with a protected DACL granting access to the supervisor's current-user SID. The host private channel key likewise uses an owner-only protected DACL. This is a concrete Windows access boundary; Unix-root language in copied comments does not describe its implementation.
+
+| Operation | Development implementation |
+| --- | --- |
+| Stop | Request SDK power shutdown when deliverable, then HCS integration-component shutdown, then hard terminate if the allowed grace expires; `--force` skips to terminate. If the supervisor pipe is absent, the command falls back to backend stop. |
+| Shutdown | Use the supervisor's guest shutdown path without the hard-terminate fallback; a guest can remain running. |
+| Restart | A normal restart asks the SDK power capability and waits for a newer authenticated channel epoch. Forced restart terminates, recreates the compute system and waits for authentication. |
+| IP | Prefer authenticated guest inventory matched to the configured MAC, then fall back to the existing resolver. A configured reservation is not proof the guest holds it. |
+| Modules | Request the SDK registry through the supervisor; report module version, state, health and restart count. |
+
+CLI stop supplies a 30-second default. A zero timeout in `StopCommand` uses 60 seconds through the supervisor, while its backend fallback uses 30 seconds. HTTP/MCP omit a timeout as zero. These interfaces therefore do not have identical defaults even within this branch.
+
+## Channel and trust flow
+
+`guestchannel.Session` loads or creates `channel.key` and `channel.pub` in the VM directory. Its dialer reads the live HCS `RuntimeId`, then opens HvSocket service port 2010. Linux core is configured for `vsock:2010`; Windows core for `hvsocket:2010`. The shared local core/module gRPC lifecycle is a separate protocol inside the guest.
+
+Each connection creates a fresh SDK client, tries presence hello, then authenticates using the private Ed25519 key. Hello failure alone does not prevent core authentication. Successful authentication records the accepted public-key fingerprint in `channel.json`, clears the host seal mark and exposes the client to callers. Module-registry retrieval can fail after authentication without failing the connection. Reconnect repeats authentication; an authentication loss during a call triggers one serialized reauthentication retry.
+
+An explicit authentication refusal retries for up to five minutes on each connection and identifies the need for out-of-band provisioning. After that connection closes, the session loop can reconnect and start another retry budget for the lifetime of the run. A modern hello, successful authentication or explicit refusal disables the delayed SSH bootstrap path, so a refused key is not repaired by silently replacing guest trust.
+
+Linux provisioning media is a `CIDATA` cloud-init seed carrying `/etc/weave/channel.pub`, channel environment and NIC configuration. Windows uses a `WEAVEPROV` volume containing `weave/channel.pub`. The host attaches this seed when trust is unprovisioned or sealed and attempts to detach it after authentication; installer mode defers detachment. Installation media carrying packages is separate from this post-install trust seed.
+
+For an existing guest that shows no modern agent, a one-time bootstrap starts after three minutes. It requires SSH reachability and usable credentials, uploads an OS-specific bundle and public key, and invokes its installer. A Windows clone with an existing first-logon deferral task is left to that task. Explicit SSH and bootstrap are separate from ongoing capability execution.
+
+## Payload resolution and boot
+
+The host SDK is pinned to `v0.2.7`. Guest payloads are resolved at operation time from GitHub stable releases: core from `/releases/latest`, and the highest stable semantic version of each selected module from module release tags. The resolver requires both amd64 and arm64 assets in the selected release even when installing only one architecture. It does not consume a promoted Weave release-channel manifest or freeze a coordinated core/module version set.
+
+| Input | Checks in this branch |
+| --- | --- |
+| Downloaded package | Require a GitHub release asset SHA-256, verify downloaded or cached bytes, and enforce a 256 MiB package limit. |
+| Downloaded core | Verify the Sigstore-signed checksum document against the core release workflow identity, then bind the selected asset digest to that signed document. |
+| Windows bundle | Validate ZIP paths and expansion limits; verify `.exe`, `install.ps1` and `uninstall.ps1` Authenticode signatures and the fixed publisher thumbprint. Guest PowerShell installers run under `AllSigned`. |
+| Linux module | Verify the release API asset digest, then lay out the raw executable and manifest under root-owned `/usr/lib/weave/modules`. This fetch path does not verify a module checksum signature. |
+| Local package override | Read configured local packages instead of the selected download. Linux overrides bypass download digest/core-signature checks; Windows bundles retain their Authenticode checks. Release discovery still runs. |
+
+These checks have distinct trust anchors. A release API digest is not a signed module checksum, and the Windows fixed publisher is not the core's Sigstore release identity. The source snapshot alone cannot certify the actual dynamically selected binaries or their compatibility with the linked SDK.
+
+Default native creation uses WSL to build a kernel and Ubuntu noble systemd rootfs. It installs the resolved core Debian package and raw Linux module layout, enables core/cloud-init services and boots the copied VHDX using `root=/dev/sda rw rootwait init=/sbin/init`. Host shares use a systemd/socat/9p path. The image writer emits a kernel and manifest; the main branch's initrd-only agent path is removed. Supplied native artifacts require both `--image` and `--rootfs`, but validation checks path existence rather than the manifest hashes or installed capability composition.
+
+Windows unattended media carries the verified core/module bundle. Ubuntu unattended media carries the Linux bundle. Fedora's inspected kickstart path does not carry that bundle, while the generic Linux bootstrap installer uses `.deb` and `dpkg`. The branch does not establish Fedora agent provisioning parity through those paths.
+
+## Updates, sealing and image transport
+
+After connection, the supervisor configures Windows static NICs and attempts automatic upgrades. It obtains the core version by guest exec and module versions from the registry, selects older installed packages, stages an installer through SDK exec and retries failed staging/verification up to three times. Missing modules are not selected for installation by this upgrade comparison. Version verification checks that selected packages report at least the requested versions; it does not require module `running` state or healthy probes. Staging resolves releases again, so its payload selection can change after the initial comparison.
+
+The Windows bundle's `install.cmd` records per-step failures but always exits zero so Windows Setup can continue. Accordingly, bootstrap's successful installer exit and written `agent-core-version` file do not prove package installation or guest readiness. Channel authentication and observed module behavior require separate evidence.
+
+Local clone requires a stopped source and checks host channel trust. Provisioned or unknown trust is refused unless `--share-key` explicitly copies the source identity; a normal allowed clone mints an independent key. Linux sealing stops core, removes the trust anchor, store identity and SSH host keys, cleans cloud-init and machine identity, then requests shutdown. Windows sealing checks SYSTEM execution, disk decryption and pending servicing, stages an interactive administrator task, stops core, removes store identity/trust/SSH keys and runs Sysprep. A first-logon task postpones core restart until clone OOBE completes. Recovery attempts restore channel access on a reported failure.
+
+The host marks a template sealed after its shutdown wait observes the VM stopped. Failure markers are polled while it remains running; there is no independent post-shutdown disk inspection or sealing attestation in this command. The host record therefore represents the observed command path, not a cryptographic proof of every disk property.
+
+OCI push still sends VM configuration plus a flattened VHDX using GuestWeave v2 media types. It has no local-clone trust gate, automatic sealing or trust scrubbing. It does not include the native kernel directory or `guest.vmgs`; source-host boot paths can remain in the exported configuration. Pull/registry clone creates a new host key, which does not remove prior trust from the guest disk. Neither native portability nor UEFI boot-state portability follows from a successful disk transfer, and the shared Weave raw-chunk OCI contract remains different.
+
+## Remaining integration limits
+
+The linked SDK `v0.2.7`, resolved to commit `0a61d653a0fd80e3befcb0b65d6b52171d36aad4`, has no `Core` field in [its `ModulesSnapshot` type](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/0a61d653a0fd80e3befcb0b65d6b52171d36aad4/sdk/protocol/hvchannel/modules.go#L31-L35). The branch's `writeCoreCondition` serializes that snapshot before looking for the optional field, so it cannot recover a degraded-core condition the SDK has already discarded. Module state/health remain available; a complete current core condition does not.
+
+The HostWeave companion contract is also still incomplete. This branch registers no `weave capabilities` command, while the pinned HostWeave adapter requires it for Windows and marks failure unhealthy. Shared SDK adoption and binary stdin support do not resolve that admission failure.
+
+Compared with the inspected [macOS implementation](macos.mdx), Windows now shares the host SDK/guest-core/module composition. Its CLI, REST and MCP exec all use the SDK supervisor path, whereas the inspected macOS REST/MCP exec path uses SSH. Windows REST/MCP capture merged output as a JSON string and an exit code; CLI streams separate stdout/stderr, supports stdin and PTY resize, and propagates guest process exit codes. Base64 stdin does not make the API's output string a binary-safe stream. Windows served HTTP retains bearer-token and Host-header wrappers; macOS's inspected listener has a different authentication policy. Lifecycle defaults, transport, provisioning and publication behavior must each be compared separately.
+
+The next acceptance evidence must bind the exact SDK, downloaded core/modules, VM artifact and host platform to observed authentication, exec/PTY/stdin/exit behavior, session-dependent capabilities, restart/reconnect, update failures, seal/clone identity and producer-to-consumer boot. This documentation review has not executed those Windows VM paths.

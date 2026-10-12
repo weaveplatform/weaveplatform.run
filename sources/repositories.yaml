@@ -1,0 +1,46 @@
+schema_version: 1
+discovered_at: '2026-10-11'
+organization: weaveplatform
+repositories:
+- name: weaveplatform-agent-core
+  visibility: public
+  scope: product
+- name: weaveplatform-agent-modules
+  visibility: public
+  scope: product
+- name: hostweave
+  visibility: private
+  scope: product
+- name: guestweave-cli-macos
+  visibility: private
+  scope: product
+- name: guestweave-cli-windows
+  visibility: private
+  scope: product
+- name: imageweave
+  visibility: public
+  scope: product
+- name: weaveplatform-oci
+  visibility: public
+  scope: dependency
+- name: weaveplatform-release-channels
+  visibility: public
+  scope: dependency
+- name: weaveplatform.run
+  visibility: public
+  scope: documentation
+- name: weaveplatform-docs
+  visibility: public
+  scope: deprecated-scaffold
+- name: weaveplatform-template
+  visibility: private
+  scope: tooling
+- name: appweave
+  visibility: private
+  scope: deferred
+- name: sightweave
+  visibility: private
+  scope: deferred
+- name: terraform-provider-hostweave
+  visibility: private
+  scope: scaffold

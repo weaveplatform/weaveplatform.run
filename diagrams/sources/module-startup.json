@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Module startup and local IPC",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1240,
+      620
+    ]
+  },
+  "participants": [
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Agent core"
+    },
+    {
+      "id": "module",
+      "type": "backend",
+      "label": "Module SDK"
+    },
+    {
+      "id": "services",
+      "type": "security",
+      "label": "Host services"
+    }
+  ],
+  "messages": [
+    {
+      "from": "core",
+      "to": "services",
+      "y": 170,
+      "label": "After verify: create listener",
+      "variant": "security"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 220,
+      "label": "Launch verified executable",
+      "variant": "security"
+    },
+    {
+      "from": "module",
+      "to": "core",
+      "y": 270,
+      "label": "Handshake: protocol and endpoint",
+      "variant": "return"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 320,
+      "label": "Init: identity, config and capabilities"
+    },
+    {
+      "from": "module",
+      "to": "services",
+      "y": 370,
+      "label": "Connect with launch token",
+      "variant": "security"
+    },
+    {
+      "from": "module",
+      "to": "core",
+      "y": 420,
+      "label": "Init result: requirements and surfaces",
+      "variant": "return"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 470,
+      "label": "Check requirements, then Start"
+    },
+    {
+      "from": "core",
+      "to": "module",
+      "y": 520,
+      "label": "Poll rich Health; monitor watchdog"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Launch boundary",
+      "items": [
+        "The host-services listener exists before the child. The SDK connects during Init."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Readiness",
+      "items": [
+        "Start and rich health are separate from the standard gRPC server SERVING status."
+      ]
+    }
+  ]
+}

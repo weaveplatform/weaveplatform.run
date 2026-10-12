@@ -1,0 +1,90 @@
+---
+title: Platform architecture
+description: Product composition, deployment boundaries and the implemented
+  connections between Weave components.
+product: platform
+audience:
+- developer
+- operator
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- hostweave:agent/runtime/guestweave/guestweave.go
+- imageweave:pkg/delivery/native.go
+- agent-core:internal/core/core.go
+- guestweave-macos:internal/vm/run/guestchannel.go
+- guestweave-macos:internal/vm/guestagent/packages.go
+- guestweave-windows:cmd/weaveagent/modulebus.go
+- guestweave-windows:internal/guestweaveagent/proto/proto.go
+- agent-modules:sdk/weaveclient/weaveclient.go
+- imageweave:pkg/nativebuild/build.go
+- imageweave:internal/imagebuild/export.go
+- imageweave:.github/workflows/macos-candidate.yml
+- channels:scripts/promote.sh
+- channels:channels/stable.json
+- agent-core:internal/lifecycle/lifecycle.go
+- guestweave-windows:internal/cli/root.go
+- hostweave:agent/runtime/guestweave/capabilities.go
+- guestweave-windows-development:go.mod
+- guestweave-windows-development:internal/command/run_channel.go
+---
+
+The platform has both product relationships and deployment relationships. GuestWeave owns local VM management **and guest integration**. In the macOS implementation, separately maintained agent-core and agent-modules supply the guest runtime and capabilities, and the agent-modules SDK supplies the host-side client. Windows GuestWeave's main baseline has its own resident agent; its separately inspected development branch migrates to the shared SDK/core/modules. HostWeave defines macOS and Windows CLI adapters, subject to companion compatibility. Imageweave builds/prepares artifacts through native platform libraries or Linux QEMU/Packer paths and OCI tooling.
+
+<Diagram id="platform-context" title="Platform context and execution boundaries">
+This view describes the locked main baselines. The macOS host manager reaches guest-resident core and OS capability modules through its SDK client; Windows main reaches its own resident guest bus. The Windows development composition is shown separately in the migration HLD. HostWeave's CLI adapter is optional orchestration; Imageweave and OCI form an artifact path with separate admission and acceptance boundaries.
+</Diagram>
+
+## Responsibilities
+
+| Area | Owns | Important boundary |
+| --- | --- | --- |
+| GuestWeave | Host VM lifecycle, guest channels/payload setup, local state/images and integration features | macOS and Windows have different guest architectures and contracts |
+| HostWeave | Control plane, scheduling/leases, host capacity/providers and workload execution | Its host agent chooses configured runtime adapters; GuestWeave is one VM path |
+| Imageweave | Image construction, preparation, agent payloads, OCI layouts, export and selected candidate workflows | Artifact build/export/publication and runtime acceptance are separate operations |
+| Agent core | Guest/device-side module process owner, local services, trust and capability routing | Used by macOS GuestWeave and the Windows migration branch; distinct from HostWeave's host agent |
+| Agent modules | Host client SDK, guest capability services, OS module binaries and packaging | SDK library and installed module processes have different locations/lifecycles |
+
+## Relationships proved by implementation
+
+| Relationship | Mechanism | What it establishes |
+| --- | --- | --- |
+| HostWeave → GuestWeave | Host-agent adapter invokes local CLI operations; capability checks depend on platform and image path | Optional orchestration; the pinned Windows CLI lacks the required companion capability command |
+| macOS GuestWeave → agent-modules SDK | Host run process imports weaveclient and owns one guest stream | Typed host capability calls, authentication, registry/events |
+| macOS GuestWeave → agent-core/module releases | Guest package installers fetch selected assets; provisioning media supplies trust | Guest-side runtime payloads; Linux's key seed alone does not install them |
+| Agent core → modules | Verify staged executable, create host-services listener, launch child, negotiate and call lifecycle RPCs | Guest process ownership and runtime admission |
+| Windows GuestWeave → local guest agent | HCS boot payload plus own client/module registry and framed JSON wire | A separate resident guest implementation, with different capability coverage |
+| Windows development → SDK/core/modules | Linked host SDK, HCS guest channel and provisioned shared release payloads | Migration implemented on the pinned branch; see the [development HLD](../products/guestweave/windows-development.mdx) for remaining parity gaps |
+| Imageweave → native platform libraries | Native builders and preparation code call host-specific libraries | Construction does not depend on invoking GuestWeave CLI |
+| Imageweave → GuestWeave target disks | Export verified OCI layout sectors to raw/VHDX outputs | Conversion, not VM registration, boot success or registry-format equivalence |
+| Imageweave → core/module releases | Prepare pinned guest payloads for separate derived agent images | macOS base/prepared acceptance requires agent absence |
+| OCI / release channels | Contracts, libraries/CLI and reviewed promotion data | Artifact shape and release selection, with consumer/version-specific checks |
+
+## Where the processes run
+
+For macOS GuestWeave, the physical host runs the CLI/VM session and its linked SDK client. The guest runs an OS service manager, weaveboot, core and separately launched OS capability modules. Core's “host services” are services offered to a module **inside that guest**. They are not a second physical-host daemon.
+
+For Windows GuestWeave's main baseline, the Windows host owns HCS state and the detached VM supervisor; the guest runs the repository's resident Linux agent or Windows guest daemon. Its module registry is local to that agent. A similarly named executable does not establish use of agent-core or the shared module SDK.
+
+The Windows migration branch replaces those legacy guest components. Its host supervisor owns the SDK connection over HvSocket and guest core owns the capability module processes. That convergence changes guest integration while HCS remains the Windows host VM engine.
+
+HostWeave's host agent is a third role, with its own outbound control-plane protocol and runtime adapters. It executes assigned work on the physical host. The GuestWeave adapter delegates VM operations to a selected CLI; it does not supervise the guest's core processes.
+
+## Following a request
+
+A locally issued macOS CLI exec request reaches the running VM session through its control socket, then the SDK client, authenticated guest channel, core router and guest OS exec module. The HTTP/MCP exec routes take an SSH path instead. On Windows main, the native Linux exec path reaches the resident agent through HvSocket/AF_VSOCK and the repository-local module bus. The Windows migration branch routes CLI, REST and MCP exec through its supervisor and authenticated SDK/core channel. These paths have different readiness, credentials and failure conditions.
+
+For orchestrated work, HostWeave first assigns/leases work to its own host agent. The selected adapter prepares and starts the runtime, then executes and reports the result. Its GuestWeave-specific CLI/capability checks are an additional integration contract, separate from the guest wire protocol. See [HostWeave](../products/hostweave/hld.mdx) for scheduling, persistence and runtime selection.
+
+## Image and promotion boundaries
+
+Imageweave has multiple paths: native construction, prepared/agent image work, OCI inspection/export and a guarded macOS candidate publication workflow. The candidate workflow can publish a base artifact with attestations; it does not thereby promote it into a release channel. Native construction alone carries no runtime acceptance result.
+
+Release-channel promotion records selected module/image entries through a reviewed change. Signing is conditional; the pinned stable document has no checked-in signature or core artifacts. Its module entries use OCI references, while stock core's channel installer requires a signed HTTP bundle and downloads artifacts through HTTP. Promotion data is therefore not a directly usable core-update feed at these baselines.
+
+A built layout, exported disk, published candidate, accepted runtime and promoted release are distinct objects. Windows's VHDX v2 contract, HostWeave's parser and the shared raw-chunk OCI family cannot be drawn as one guaranteed interoperable pipeline. See [compatibility](compatibility.md).
+
+## Evidence scope
+
+The platform context diagram describes source at the locked main commits, checked against complete trees during PR11 review. The Windows migration HLD and diagram use their separately locked development commit and SDK release. Installer release pins and checked-in embedded binaries are separate baselines. No real-machine acceptance is claimed. Public source anchors include [SDK host client](https://github.com/weaveplatform/weaveplatform-agent-modules/blob/733ce935024428cadafc68957d2d49419c28d4fb/sdk/weaveclient/weaveclient.go), [core assembly](https://github.com/weaveplatform/weaveplatform-agent-core/blob/58f13ffcdba1641a692f985b3b26d053bb467da5/internal/core/core.go), [Imageweave native builder](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/pkg/nativebuild/build.go) and [target export](https://github.com/weaveplatform/imageweave/blob/3f81345846d7c64bc1b9c5f8f38949a02ca462c5/internal/imagebuild/export.go). Private implementation paths/checksums are recorded without exporting their raw contracts.

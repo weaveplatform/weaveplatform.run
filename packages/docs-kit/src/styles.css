@@ -1,0 +1,81 @@
+@import '@fontsource/dm-sans/latin-400.css';
+@import '@fontsource/dm-sans/latin-500.css';
+@import '@fontsource/dm-sans/latin-600.css';
+@import '@fontsource/dm-sans/latin-700.css';
+@import '@fontsource/space-grotesk/latin-400.css';
+@import '@fontsource/space-grotesk/latin-500.css';
+@import '@fontsource/space-grotesk/latin-600.css';
+@import '@fontsource/space-grotesk/latin-700.css';
+
+:root {
+  --ifm-background-color: #fbfdfc;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-color-primary: #167d62;
+  --ifm-color-primary-dark: #137158;
+  --ifm-color-primary-darker: #126a53;
+  --ifm-color-primary-darkest: #0f5845;
+  --ifm-color-primary-light: #198a6c;
+  --ifm-color-primary-lighter: #1a9171;
+  --ifm-color-primary-lightest: #20ac87;
+  --ifm-font-family-base: 'DM Sans', system-ui, sans-serif;
+  --ifm-heading-font-family: 'Space Grotesk', system-ui, sans-serif;
+  --ifm-code-font-size: 90%;
+  --ifm-navbar-height: 4.5rem;
+  --ifm-global-radius: 12px;
+  --weave-border: #dce4e3;
+  --weave-panel: #f4f7f6;
+}
+html[data-theme='dark'] {
+  --ifm-color-primary: #8de8c8;
+  --ifm-color-primary-dark: #65deb4;
+  --ifm-color-primary-darker: #50d9aa;
+  --ifm-color-primary-darkest: #2ac78f;
+  --ifm-color-primary-light: #b5f2dc;
+  --ifm-color-primary-lighter: #c9f7e6;
+  --ifm-color-primary-lightest: #edfcf7;
+  --ifm-background-color: #0c1118;
+  --ifm-background-surface-color: #121923;
+  --ifm-font-color-base: #e5eaf0;
+  --weave-border: #26333f;
+  --weave-panel: #121923;
+  --ifm-footer-background-color: #0a0f15;
+}
+.navbar {border-bottom: 1px solid var(--weave-border); box-shadow: none;}
+.footer--dark {--ifm-footer-background-color: #0a0f15;}
+.navbar__title {font-family: var(--ifm-heading-font-family); font-size: .88rem; letter-spacing: .1em;}
+.navbar__logo {height: 2rem;}
+.menu__link {font-size: .9rem;}
+.markdown h1 {font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -.035em;}
+.markdown h2 {letter-spacing: -.025em;}
+.markdown p, .markdown li {line-height: 1.8;}
+.markdown table {font-size: .92rem;}
+.weave-home {max-width: 1180px; margin: 0 auto; padding: 5rem 2rem 4rem;}
+.weave-eyebrow {font-size: .76rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ifm-color-primary);}
+.weave-hero {position: relative; padding: 1rem 0 4rem; border-bottom: 1px solid var(--weave-border);}
+.weave-hero h1 {font-size: clamp(3.2rem, 7vw, 6.5rem); line-height: 1.04; letter-spacing: -.06em; margin: 1.2rem 0 1.6rem; max-width: 900px;}
+.weave-hero h1 span {color: var(--ifm-color-primary);}
+.weave-lead {max-width: 650px; font-size: 1.22rem; color: var(--ifm-color-content-secondary); line-height: 1.7;}
+.weave-actions {display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem;}
+.weave-actions .button {padding: .85rem 1.3rem; font-weight: 600;}
+.weave-section {padding-top: 3.5rem;}
+.weave-section-header {display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 1.5rem;}
+.weave-section-header h2 {font-size: 2rem; letter-spacing: -.04em; margin: 0;}
+.weave-section-header p {margin: 0; color: var(--ifm-color-content-secondary); max-width: 480px;}
+.weave-grid {display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1rem;}
+.weave-card {display: block; color: var(--ifm-font-color-base); background: var(--weave-panel); border: 1px solid var(--weave-border); padding: 1.6rem; border-radius: 14px; transition: border-color .2s, transform .2s;}
+.weave-card:hover {text-decoration: none; color: var(--ifm-font-color-base); border-color: var(--ifm-color-primary); transform: translateY(-3px);}
+.weave-card-kicker {font-family: var(--ifm-heading-font-family); color: var(--ifm-color-primary); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase;}
+.weave-card h3 {font-size: 1.3rem; margin: .8rem 0; letter-spacing: -.025em;}
+.weave-card p {font-size: .95rem; color: var(--ifm-color-content-secondary); margin-bottom: 1.5rem; line-height: 1.65;}
+.weave-card-arrow {color: var(--ifm-color-primary); font-size: .85rem; font-weight: 600;}
+.weave-note {margin-top: 2rem; padding: 1.5rem; border-left: 2px solid var(--ifm-color-primary); background: var(--weave-panel); border-radius: 0 12px 12px 0;}
+.weave-note p:last-child {margin: 0;}
+.weave-provenance {font-size: .8rem; color: var(--ifm-color-content-secondary); margin-bottom: 1rem;}
+.weave-diagram {margin: 2rem 0; border: 1px solid var(--weave-border); border-radius: 14px; overflow: hidden;}
+.weave-diagram-heading {display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--weave-panel); padding: 1rem 1.2rem; font-size: .9rem;}
+.weave-diagram iframe {width: 100%; height: 660px; display: block; border: 0; background: #fff;}
+.weave-diagram figcaption {padding: 1rem 1.2rem; font-size: .9rem; line-height: 1.6;}
+.weave-search {--pagefind-ui-primary: var(--ifm-color-primary); --pagefind-ui-text: var(--ifm-font-color-base); --pagefind-ui-background: var(--ifm-background-color); --pagefind-ui-border: var(--weave-border); --pagefind-ui-tag: var(--weave-panel);}
+@media (max-width: 900px) {.weave-grid {grid-template-columns: repeat(2,minmax(0,1fr));} .weave-section-header {display: block;} .weave-section-header p {margin-top: 1rem;}}
+@media (max-width: 600px) {.weave-home {padding: 2.5rem 1.2rem;} .weave-grid {grid-template-columns: 1fr;} .weave-diagram-heading {align-items: start; flex-direction: column;} .weave-diagram iframe {height: 720px;}}
+@media (prefers-reduced-motion: reduce) {.weave-card {transition: none;} .weave-card:hover {transform: none;}}

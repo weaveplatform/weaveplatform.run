@@ -1,0 +1,62 @@
+---
+title: Knowledge base architecture
+description: Repository layout, knowledge ownership, shared tooling and publication boundaries.
+product: documentation
+audience: [contributor, developer, operator]
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+  - documentation:scripts/prepare-companion.mjs
+  - documentation:scripts/validate.mjs
+  - documentation:site/docusaurus.config.ts
+  - documentation:.github/workflows/deploy.yml
+---
+
+The knowledge base has two authoritative homes. `weaveplatform.run` owns public product explanations and the public website. The private `weaveplatform.dev` repository owns confidential evidence, environment records and operational knowledge. Both produce static Docusaurus websites using the same documentation kit.
+
+<Diagram id="documentation-architecture" title="Documentation ownership and publication">
+Each repository reviews and builds its own content. Public Pages serves the consumer and developer site; the internal site requires Cloudflare Access. Hosting setup is pending.
+</Diagram>
+
+## Repository layout
+
+| Path | Responsibility |
+| --- | --- |
+| `docs/` | Authored platform, product, reference, development and operations pages |
+| `diagrams/sources/` | Canonical Archify JSON, registered with evidence in `diagrams/manifest.yaml` |
+| `sources/repositories.yaml` | Platform repository inventory and documentation scope |
+| `sources/sources.lock.yaml` | Exact implementation commits, inspected paths and checksums |
+| `sources/contracts/` | Reviewed contract snapshots from authoritative upstream code |
+| `site/` | Docusaurus configuration, navigation and pages |
+| `packages/docs-kit/` | Shared typography, components and page metadata schema |
+| `tools/archify/` | Checksummed renderer distribution and third-party notices |
+| `scripts/` | Evidence, content, diagram, build and browser verification |
+| `.github/workflows/` | Validation, preview, production and upstream-review workflows |
+| `deployment/` | Hosting configuration, access verification and rollback procedures |
+
+Generated viewers, contract downloads, search indexes and site output are build products. Keep canonical specifications and snapshots under version control; retain receipts and screenshots as CI artifacts.
+
+## Authority and audience
+
+Maintain each fact in its authoritative home. Internal pages link to public HLDs instead of copying their prose. A private investigation can supply a reviewed public explanation, but private contracts and environment details stay in the internal repository.
+
+Organise knowledge around reader tasks: understand the platform, develop integrations, look up interfaces and operate services. Product guides follow those same categories as content grows. The initial content is the selected product HLDs; API task guides and tested infrastructure implementation guides follow the [roadmap](roadmap.md).
+
+## Evidence and maintenance
+
+Page metadata declares audience, owner, verification date, status and source references. Source locks bind inspected code to exact commits and checksums. Diagram manifests bind relationships to that same evidence. Validation rejects unresolved references, unregistered contract files, private snapshots in a public build and draft pages in the published tree.
+
+Static inspection and runtime acceptance are distinct statuses. Upstream refresh reports changed evidence for review; it does not automatically update claims or their verification dates.
+
+## Shared tooling
+
+The public repository owns `@weaveplatform/docs-kit`. The private bootstrap records its file checksums in `UPSTREAM.json`, which validation enforces. Subsequent upgrades should consume a reviewed immutable release archive and its checksum.
+
+The Archify distribution has a separate provenance file. Renderer changes require an intentional upstream upgrade and a new diagram validation and visual review cycle.
+
+## Publication
+
+The [publishing workflow](../operations/publishing.mdx) deploys the artifact produced by successful CI at an exact documentation commit. Source revisions remain in the deployment manifest. Public and internal projects have separate domains and access boundaries.
+
+Cloudflare publication remains disabled until account setup and access verification are complete. The existing local build proves the repository can produce the website; live deployment and rollback require their own observed results.

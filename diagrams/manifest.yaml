@@ -1,0 +1,109 @@
+schema_version: 1
+diagrams:
+- id: documentation-architecture
+  type: architecture
+  title: Documentation ownership and publication
+  source: diagrams/sources/documentation-architecture.json
+  audience: public
+  evidence:
+  - documentation:scripts/prepare-companion.mjs
+  - documentation:.github/workflows/quality-gate.yml
+  - documentation:.github/workflows/deploy.yml
+- id: publishing-workflow
+  type: workflow
+  title: Documentation review and production release
+  source: diagrams/sources/publishing-workflow.json
+  audience: public
+  evidence:
+  - documentation:.github/workflows/quality-gate.yml
+  - documentation:.github/workflows/deploy.yml
+- id: agent-core
+  type: architecture
+  title: 'Agent core inside the guest'
+  source: diagrams/sources/agent-core.json
+  audience: public
+  evidence:
+  - agent-core:internal/core/core.go
+  - agent-core:internal/supervise/launch.go
+  - agent-core:internal/hostserv/hostserv.go
+  - agent-core:internal/transport/hypervisor.go
+  - agent-core:internal/weaveboot/weaveboot.go
+- id: guestweave-macos
+  type: architecture
+  title: "GuestWeave on macOS: host runtime and guest components"
+  source: diagrams/sources/guestweave-macos.json
+  audience: public
+  evidence:
+  - guestweave-macos:internal/vm/run/session.go
+  - guestweave-macos:internal/vm/run/guestchannel.go
+  - guestweave-macos:internal/hypervisor/hypervisor.go
+  - guestweave-macos:internal/vm/guestagent/packages.go
+  - guestweave-macos:internal/vm/guestagent/windows.go
+  - guestweave-macos:internal/imagesource/oci/registry.go
+- id: guestweave-windows
+  type: architecture
+  title: GuestWeave on a Windows host
+  source: diagrams/sources/guestweave-windows.json
+  audience: public
+  evidence:
+  - guestweave-windows:internal/command/command.go
+  - guestweave-windows:internal/hcs/engine.go
+  - guestweave-windows:internal/guestweaveagent/client/client.go
+  - guestweave-windows:internal/guestweaveagent/proto/proto.go
+  - guestweave-windows:cmd/weaveagent/modulebus.go
+  - guestweave-windows:cmd/weaveguestd/main.go
+- id: guestweave-windows-development
+  type: architecture
+  title: 'GuestWeave Windows: development agent handover'
+  source: diagrams/sources/guestweave-windows-development.json
+  audience: public
+  evidence:
+  - guestweave-windows-development:internal/command/run_channel.go
+  - guestweave-windows-development:internal/guestchannel/channel.go
+  - guestweave-windows-development:internal/guestchannel/dial_windows.go
+  - guestweave-windows-development:internal/vm/guestctl/socket.go
+  - guestweave-windows-development:internal/vm/channelkey/private_windows.go
+  - guestweave-windows-development:internal/vm/guestagent/packages.go
+- id: hostweave
+  type: architecture
+  title: 'HostWeave: control plane, host agent and execution backends'
+  source: diagrams/sources/hostweave.json
+  audience: public
+  evidence:
+  - hostweave:internal/app/app.go
+  - hostweave:internal/agentgw/gateway.go
+  - hostweave:agent/supervisor/supervisor.go
+  - hostweave:internal/cli/agentcmd/vms.go
+  - hostweave:internal/cli/agentcmd/containers.go
+  - hostweave:agent/runtime/guestweave/guestweave.go
+- id: imageweave-construction
+  type: workflow
+  title: 'Imageweave construction and runtime acceptance'
+  source: diagrams/sources/imageweave-construction.json
+  audience: public
+  evidence:
+  - imageweave:pkg/plan/plan.go
+  - imageweave:pkg/nativebuild/build.go
+  - imageweave:pkg/delivery/native.go
+  - imageweave:pkg/delivery/build.go
+- id: module-startup
+  type: sequence
+  title: Module startup and local IPC
+  source: diagrams/sources/module-startup.json
+  audience: public
+  evidence:
+  - agent-core:internal/supervise/launch.go
+  - agent-modules:sdk/modulesdk/serve.go
+  - agent-modules:sdk/modulesdk/lifecycle.go
+- id: platform-context
+  type: architecture
+  title: 'GuestWeave composition and platform relationships'
+  source: diagrams/sources/platform-context.json
+  audience: public
+  evidence:
+  - hostweave:agent/runtime/guestweave/guestweave.go
+  - guestweave-macos:internal/vm/run/guestchannel.go
+  - guestweave-windows:cmd/weaveagent/modulebus.go
+  - guestweave-windows:internal/guestweaveagent/proto/proto.go
+  - imageweave:pkg/nativebuild/build.go
+  - agent-core:internal/core/core.go

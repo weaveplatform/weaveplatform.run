@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {"title": "GuestWeave on a Windows host", "locale": "en", "quality_profile": "showcase", "viewBox": [1390, 760]},
+  "components": [
+    {"id": "entrypoints", "type": "external", "label": "User or integration", "sublabel": "CLI · HTTP · MCP stdio", "pos": [40, 150], "size": [240, 92]},
+    {"id": "commands", "type": "backend", "label": "GuestWeave commands", "sublabel": "Host-side lifecycle and tools", "pos": [390, 150], "size": [240, 92]},
+    {"id": "hcs-engine", "type": "backend", "label": "GuestWeave HCS engine", "sublabel": "HCS compute · HCN networks", "pos": [740, 150], "size": [240, 92]},
+    {"id": "guest-vm", "type": "backend", "label": "Guest VM", "sublabel": "Windows or Linux", "pos": [1090, 150], "size": [240, 92]},
+    {"id": "oci-registry", "type": "external", "label": "OCI registry", "sublabel": "GuestWeave VHDX v2 artifacts", "pos": [40, 460], "size": [240, 92]},
+    {"id": "host-state", "type": "database", "label": "VM store and cache", "sublabel": "Config · VHDX · saved state", "pos": [390, 460], "size": [240, 92]},
+    {"id": "module-client", "type": "backend", "label": "GuestWeave bus client", "sublabel": "Hello · exec · clipboard", "pos": [740, 460], "size": [240, 92]},
+    {"id": "bundled-agent", "type": "backend", "label": "Bundled guest agent", "sublabel": "Repository-local Go modules", "pos": [1090, 460], "size": [240, 92]}
+  ],
+  "boundaries": [
+    {"kind": "region", "label": "Windows host: GuestWeave implementation", "wraps": ["commands", "hcs-engine", "host-state", "module-client"], "pad": 26},
+    {"kind": "region", "label": "Guest operating system", "wraps": ["guest-vm", "bundled-agent"], "pad": 26}
+  ],
+  "connections": [
+    {"id": "invoke-command", "from": "entrypoints", "to": "commands", "label": "Invoke"},
+    {"id": "manage-compute", "from": "commands", "to": "hcs-engine", "label": "Lifecycle"},
+    {"id": "boot-guest", "from": "hcs-engine", "to": "guest-vm", "label": "Boot / stop"},
+    {"id": "persist-state", "from": "commands", "to": "host-state", "label": "Read / write", "labelDy": 24},
+    {"id": "registry-transfer", "from": "commands", "to": "oci-registry", "label": "OCI push / pull"},
+    {"id": "guest-exchange", "from": "hcs-engine", "to": "module-client", "label": "Native exec", "labelDy": 24},
+    {"id": "module-transport", "from": "module-client", "to": "bundled-agent", "label": "HvSocket"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Bundled agents", "items": ["Linux: weave-agent serves exec and clipboard.", "Windows: weave-guestd serves clipboard."]},
+    {"dot": "emerald", "title": "Guest protocol", "items": ["Port 2010 carries length-prefixed JSON envelopes.", "This bus is separate from agent-core gRPC modules."]},
+    {"dot": "amber", "title": "Other tool path", "items": ["Agent install/call/tools invoke a supplied binary over SSH.", "That path is separate from the resident module bus."]}
+  ]
+}

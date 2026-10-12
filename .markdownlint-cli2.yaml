@@ -1,0 +1,11 @@
+config:
+  MD013: false
+  MD033: false
+  MD024: false
+  MD025: false
+globs:
+  - docs/**/*.md
+  - docs/**/*.mdx
+  - README.md
+  - CONTRIBUTING.md
+  - SECURITY.md

@@ -1,5 +1,5 @@
-# Security Policy
+# Security reporting
 
-If you discover a security issue in this repo, please submit it through the [GitHub Security Bug Bounty](<https://hackerone.com/github>)
+Report confidential security issues through GitHub's private vulnerability reporting for this repository. Public issues are appropriate for ordinary documentation defects.
 
-Thanks for helping make GitHub safe for everyone.
+The public build must not contain private implementation snapshots, internal runbooks, credentials or internal search indexes. Access protection must cover every hostname of the private site before internal artifacts are uploaded. See [hosting setup](deployment/README.md).

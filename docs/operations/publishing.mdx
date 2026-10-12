@@ -1,0 +1,50 @@
+---
+title: Publish and maintain the knowledge base
+description: Static builds, Cloudflare Pages deployment, internal Access protection
+  and rollback.
+product: documentation
+audience:
+- operator
+- contributor
+owner: ShocOne
+status: code-inspected
+verified_at: '2026-10-11'
+evidence:
+- documentation:.github/workflows/deploy.yml
+- documentation:.github/workflows/quality-gate.yml
+- documentation:scripts/source-refresh.mjs
+---
+
+The public and internal knowledge bases build to static output. GitHub Actions validates changes and deploys trusted builds through Cloudflare Pages Direct Upload.
+
+<Diagram id="publishing-workflow" title="Documentation review and production release">
+A reviewed merge runs CI again on main. Production consumes that successful build artifact through its environment gate, uploads it and checks the deployed commit and reader access.
+</Diagram>
+
+## Deployment prerequisites
+
+Configure the Cloudflare account and API token through protected repository secrets. Set the Pages project name and canonical domain in repository variables. The token needs Pages edit permission for the chosen account; account/Access provisioning uses a separate operator credential.
+
+Publishing remains disabled until `DOCS_DEPLOY_ENABLED` is `true`. This allows the repository and checks to exist before the hosting account and custom domains are ready.
+
+## Review and deployment
+
+Pull requests run content validation, tests, diagram delivery, browser evidence, the site build and local-link checks. Trusted same-repository branches can receive preview deployments. Forks receive build artifacts without deployment credentials.
+
+Public production publishes a successful `main` build through the `production` environment, configured with owner approval and branch restrictions. Internal production uses an owner-triggered workflow because the private repository's current GitHub plan does not support required environment reviewers. The selected run must be a successful main-push documentation build from that same repository. The workflow records the site commit and build run; the source-lock file captures the implementation baseline.
+
+## Internal access
+
+The private [weaveplatform.dev repository](https://github.com/weaveplatform/weaveplatform.dev) grants its `docs-internal` GitHub team read access. Configure Cloudflare Access to admit that same team.
+
+Protect the canonical domain, default `pages.dev` domain and preview wildcard. A preview Access policy alone does not secure production. Apply policies using placeholder content, then confirm anonymous and non-team users cannot fetch pages, scripts, search bundles or diagrams before uploading internal knowledge.
+
+## Rollback
+
+Retain a previous successful deployment and its source commit. Use the documented deployment rollback procedure, then repeat production smoke checks. A failed smoke check marks the run failed; it must not be described as successful publication.
+
+## Upstream maintenance
+
+Weekly and manual refresh jobs compare relevant implementation files with pinned evidence and open a review proposal when changes occur. They do not update facts or verification status automatically.
+
+Detailed setup, Access verification and bootstrap commands are in the repository’s deployment README. Hosting credentials and actual deployment checks are environment prerequisites; this page does not claim a live site has already passed them.
